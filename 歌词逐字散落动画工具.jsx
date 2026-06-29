@@ -14,11 +14,9 @@
 // ---- 构建面板 ----
 var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.2", undefined);
 pal.orientation = "column";
-pal.alignChildren = ["left", "top"];
+pal.alignChildren = ["fill", "top"];
 pal.spacing = 4;
 pal.margins = [8, 8, 8, 8];
-pal.preferredSize.width = 280;
-pal.minimumSize = [280, 560];
 
 // 标题
 var titleGrp = pal.add("group");
@@ -37,7 +35,6 @@ tabGrp.spacing = 4;
 // ======================================================================
 var entryGrp = tabGrp.add("panel");
 entryGrp.text = "  入场参数";
-entryGrp.preferredSize.width = 270;
 entryGrp.orientation = "column";
 entryGrp.alignChildren = "left";
 entryGrp.spacing = 3;
@@ -77,7 +74,6 @@ entryMode.preferredSize.width = 100;
 // ======================================================================
 var exitGrp = tabGrp.add("panel");
 exitGrp.text = "  出场参数";
-exitGrp.preferredSize.width = 270;
 exitGrp.orientation = "column";
 exitGrp.alignChildren = "left";
 exitGrp.spacing = 3;
@@ -112,7 +108,6 @@ exitMode.preferredSize.width = 100;
 // ======================================================================
 var heightGrp = tabGrp.add("panel");
 heightGrp.text = "  高度错落（波浪浮动）";
-heightGrp.preferredSize.width = 270;
 heightGrp.orientation = "column";
 heightGrp.alignChildren = "left";
 heightGrp.spacing = 3;
@@ -140,7 +135,6 @@ var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 5; speed.pr
 // ======================================================================
 var scatterGrp = tabGrp.add("panel");
 scatterGrp.text = "  散落分布（随机位置 / 大小 / 模糊）";
-scatterGrp.preferredSize.width = 270;
 scatterGrp.orientation = "column";
 scatterGrp.alignChildren = "left";
 scatterGrp.spacing = 3;
@@ -197,7 +191,6 @@ var blurMax = gS10.add("edittext", undefined, "25"); blurMax.characters = 5; blu
 // ======================================================================
 var presetGrp = pal.add("panel");
 presetGrp.text = "  预设管理";
-presetGrp.preferredSize.width = 270;
 presetGrp.orientation = "column";
 presetGrp.alignChildren = "left";
 presetGrp.spacing = 3;
@@ -256,12 +249,12 @@ btnGrp.alignment = "center";
 btnGrp.spacing = 10;
 btnGrp.margins = [0, 6, 0, 0];
 
-var applyBtn = btnGrp.add("button", undefined, "应用");
-applyBtn.preferredSize.width = 100;
+var applyBtn = btnGrp.add("button", undefined, "应用动画");
+applyBtn.preferredSize.width = 160;
 applyBtn.preferredSize.height = 26;
 
-var clearBtn = btnGrp.add("button", undefined, "清除");
-clearBtn.preferredSize.width = 100;
+var clearBtn = btnGrp.add("button", undefined, "清除动画");
+clearBtn.preferredSize.width = 160;
 clearBtn.preferredSize.height = 26;
 
 var statusBar = pal.add("statictext", undefined, "就绪 - 选中一个文本图层后点击应用");
@@ -966,8 +959,4 @@ if (pal instanceof Window) {
     pal.show();
 }
 pal.layout.layout(true);
-if (pal instanceof Panel) {
-    try { pal.layout.resize(); } catch (e) {}
-    try { pal.size = [280, pal.size.height]; } catch (e) {}
-}
 try { updateLoadButtons(); } catch (e) {}
