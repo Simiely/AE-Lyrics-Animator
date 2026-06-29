@@ -97,47 +97,41 @@ presetGrp.alignChildren = "fill";
 presetGrp.spacing = 4;
 presetGrp.margins = [10, 18, 10, 8];
 
-// 存储预设行
+// 存储预设行（压缩宽度确保与使用行对齐）
 var saveRow = presetGrp.add("group");
 saveRow.orientation = "row";
 saveRow.alignChildren = "center";
-saveRow.spacing = 2;
+saveRow.spacing = 1;
 var saveLabel = saveRow.add("statictext", undefined, "存储");
-saveLabel.preferredSize.width = 28;
+saveLabel.preferredSize.width = 24;
 var saveBtns = [];
 for (var px = 1; px <= 4; px++) {
     var sBtn = saveRow.add("button", undefined, String(px));
-    sBtn.preferredSize.width = 28;
+    sBtn.preferredSize.width = 24;
     sBtn.preferredSize.height = 22;
     saveBtns.push(sBtn);
 }
 var clearPresetBtn = saveRow.add("button", undefined, "清除全部");
-clearPresetBtn.preferredSize.width = 64;
+clearPresetBtn.preferredSize.width = 60;
 clearPresetBtn.preferredSize.height = 22;
 
-// 使用预设行
+// 使用预设行 + 复位按钮（压缩宽度确保一行排下）
 var loadRow = presetGrp.add("group");
 loadRow.orientation = "row";
 loadRow.alignChildren = "center";
-loadRow.spacing = 2;
+loadRow.spacing = 1;
 var loadLabel = loadRow.add("statictext", undefined, "使用");
-loadLabel.preferredSize.width = 28;
+loadLabel.preferredSize.width = 24;
 var loadBtns = [];
 for (var px = 1; px <= 4; px++) {
     var lBtn = loadRow.add("button", undefined, String(px));
-    lBtn.preferredSize.width = 28;
+    lBtn.preferredSize.width = 24;
     lBtn.preferredSize.height = 22;
     lBtn.enabled = false;
     loadBtns.push(lBtn);
 }
-
-// 复位按钮行
-var resetRow = presetGrp.add("group");
-resetRow.orientation = "row";
-resetRow.alignChildren = "center";
-resetRow.spacing = 2;
-var resetBtn = resetRow.add("button", undefined, "复位");
-resetBtn.preferredSize.width = 80;
+var resetBtn = loadRow.add("button", undefined, "复位");
+resetBtn.preferredSize.width = 55;
 resetBtn.preferredSize.height = 22;
 
 // 绑定存储按钮
