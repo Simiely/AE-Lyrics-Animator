@@ -1,27 +1,29 @@
 // ============================================================
-// 歌词逐字散落动画工具  v2.0  —  for After Effects 2026
+// 歌词逐字散落动画工具  v3.0  —  for After Effects 2026
 // ============================================================
 // 功能：选中文本图层后，自动生成逐字动画
-// - 从左侧模糊进入 → 清晰 → 右侧模糊消失
-// - 高度错落（波浪浮动）+ 散落分布（随机位置、随机大小）
+// - 入场方向可选（左/右/上/下）模糊进入 → 清晰
+// - 出场方向与入场对称，文字渐隐消失并变模糊
+// - 高度错落（波浪浮动）+ 散落分布（随机位置、随机大小、可控时间）
+// - 随机模糊效果（部分字符模糊、部分清晰，基于种子可复现）
 // - 种子参数控制随机分布位置，可复现
 // - 所有参数可调
 // - 预设存储/加载（XMP 工程持久化）
 // ============================================================
 
 // ---- 构建面板 ----
-var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v2.0", undefined);
+var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.0", undefined);
 pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 6;
 pal.margins = [12, 10, 12, 10];
-pal.minimumSize = [280, 420];
+pal.minimumSize = [300, 520];
 
 // 标题
 var titleGrp = pal.add("group");
 titleGrp.orientation = "row";
 titleGrp.alignment = "center";
-var titleText = titleGrp.add("statictext", undefined, "歌词逐字散落动画工具");
+var titleText = titleGrp.add("statictext", undefined, "歌词逐字散落动画工具 v3.0");
 
 // ---- 参数分类 ----
 var tabGrp = pal.add("group");
@@ -48,6 +50,13 @@ var entryBlur = g2.add("edittext", undefined, "40"); entryBlur.characters = 6; e
 var g3 = entryGrp.add("group"); g3.orientation = "row"; g3.alignChildren = "left";
 g3.add("statictext", undefined, "入场偏移 (像素)").preferredSize.width = 100;
 var entryOffset = g3.add("edittext", undefined, "80"); entryOffset.characters = 6; entryOffset.alignment = "fill";
+
+// 方向选择
+var gDir = entryGrp.add("group"); gDir.orientation = "row"; gDir.alignChildren = "left";
+gDir.add("statictext", undefined, "入场方向").preferredSize.width = 100;
+var entryDirection = gDir.add("dropdownlist", undefined, ["从左到右", "从右到左", "从上到下", "从下到上"]);
+entryDirection.selection = 0;
+entryDirection.preferredSize.width = 90;
 
 // ---------- 出场参数 ----------
 var exitGrp = tabGrp.add("panel");
@@ -92,27 +101,53 @@ var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 6; speed.al
 
 // ---------- 散落分布参数 ----------
 var scatterGrp = tabGrp.add("panel");
-scatterGrp.text = "  散落分布（随机位置 / 大小）";
+scatterGrp.text = "  散落分布（随机位置 / 大小 / 模糊）";
 scatterGrp.orientation = "column";
 scatterGrp.alignChildren = "right";
 scatterGrp.spacing = 4;
 scatterGrp.margins = [10, 18, 10, 10];
 
-var g7 = scatterGrp.add("group"); g7.orientation = "row"; g7.alignChildren = "left";
-g7.add("statictext", undefined, "散布范围 (像素)").preferredSize.width = 90;
-var scatterRange = g7.add("edittext", undefined, "150"); scatterRange.characters = 6; scatterRange.alignment = "fill";
+var gS1 = scatterGrp.add("group"); gS1.orientation = "row"; gS1.alignChildren = "left";
+gS1.add("statictext", undefined, "散布范围 (像素)").preferredSize.width = 100;
+var scatterRange = gS1.add("edittext", undefined, "150"); scatterRange.characters = 6; scatterRange.alignment = "fill";
 
-var g8 = scatterGrp.add("group"); g8.orientation = "row"; g8.alignChildren = "left";
-g8.add("statictext", undefined, "随机种子").preferredSize.width = 100;
-var seed = g8.add("edittext", undefined, "1"); seed.characters = 6; seed.alignment = "fill";
+var gS2 = scatterGrp.add("group"); gS2.orientation = "row"; gS2.alignChildren = "left";
+gS2.add("statictext", undefined, "随机种子").preferredSize.width = 100;
+var seed = gS2.add("edittext", undefined, "1"); seed.characters = 6; seed.alignment = "fill";
 
-var g9 = scatterGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "left";
-g9.add("statictext", undefined, "最小缩放 (%)").preferredSize.width = 100;
-var minScale = g9.add("edittext", undefined, "50"); minScale.characters = 6; minScale.alignment = "fill";
+var gS3 = scatterGrp.add("group"); gS3.orientation = "row"; gS3.alignChildren = "left";
+gS3.add("statictext", undefined, "散落开始 (秒)").preferredSize.width = 100;
+var scatterStart = gS3.add("edittext", undefined, "2.0"); scatterStart.characters = 6; scatterStart.alignment = "fill";
+gS3.add("statictext", undefined, "（绝对时间）").preferredSize.width = 70;
 
-var g10 = scatterGrp.add("group"); g10.orientation = "row"; g10.alignChildren = "left";
-g10.add("statictext", undefined, "最大缩放 (%)").preferredSize.width = 100;
-var maxScale = g10.add("edittext", undefined, "200"); maxScale.characters = 6; maxScale.alignment = "fill";
+var gS4 = scatterGrp.add("group"); gS4.orientation = "row"; gS4.alignChildren = "left";
+gS4.add("statictext", undefined, "散落过渡 (秒)").preferredSize.width = 100;
+var scatterTrans = gS4.add("edittext", undefined, "1.0"); scatterTrans.characters = 6; scatterTrans.alignment = "fill";
+
+var gS5 = scatterGrp.add("group"); gS5.orientation = "row"; gS5.alignChildren = "left";
+gS5.add("statictext", undefined, "最小缩放 (%)").preferredSize.width = 100;
+var minScale = gS5.add("edittext", undefined, "50"); minScale.characters = 6; minScale.alignment = "fill";
+
+var gS6 = scatterGrp.add("group"); gS6.orientation = "row"; gS6.alignChildren = "left";
+gS6.add("statictext", undefined, "最大缩放 (%)").preferredSize.width = 100;
+var maxScale = gS6.add("edittext", undefined, "200"); maxScale.characters = 6; maxScale.alignment = "fill";
+
+// 随机模糊参数
+var gS7 = scatterGrp.add("group"); gS7.orientation = "row"; gS7.alignChildren = "left";
+gS7.add("statictext", undefined, "模糊随机种子").preferredSize.width = 100;
+var blurSeed = gS7.add("edittext", undefined, "10"); blurSeed.characters = 6; blurSeed.alignment = "fill";
+
+var gS8 = scatterGrp.add("group"); gS8.orientation = "row"; gS8.alignChildren = "left";
+gS8.add("statictext", undefined, "模糊概率 (%)").preferredSize.width = 100;
+var blurProb = gS8.add("edittext", undefined, "40"); blurProb.characters = 6; blurProb.alignment = "fill";
+
+var gS9 = scatterGrp.add("group"); gS9.orientation = "row"; gS9.alignChildren = "left";
+gS9.add("statictext", undefined, "最小模糊值").preferredSize.width = 100;
+var blurMin = gS9.add("edittext", undefined, "0"); blurMin.characters = 6; blurMin.alignment = "fill";
+
+var gS10 = scatterGrp.add("group"); gS10.orientation = "row"; gS10.alignChildren = "left";
+gS10.add("statictext", undefined, "最大模糊值").preferredSize.width = 100;
+var blurMax = gS10.add("edittext", undefined, "25"); blurMax.characters = 6; blurMax.alignment = "fill";
 
 // ---------- 预设管理 ----------
 var presetGrp = pal.add("panel");
@@ -191,7 +226,7 @@ statusBar.alignment = "left";
 statusBar.margins = [0, 4, 0, 0];
 
 // 提示
-var tipBar = pal.add("statictext", undefined, "提示：相同种子和参数下，每次生成位置完全一致");
+var tipBar = pal.add("statictext", undefined, "提示：散落开始时间应 ≥ 入场持续时间，避免效果重叠");
 tipBar.alignment = "left";
 tipBar.margins = [0, 0, 0, 0];
 
@@ -321,11 +356,13 @@ var presetsCache = readPresets() || {};
 
 function saveSlot(idx) {
     var params = {
-        d: entryDur.text, b: entryBlur.text, o: entryOffset.text,
+        d: entryDur.text, b: entryBlur.text, o: entryOffset.text, dir: entryDirection.selection ? entryDirection.selection.index : 0,
         es: exitStart.text, ed: exitDur.text, eo: exitOffset.text,
         a: heightAmp.text, f: heightFreq.text, sp: speed.text,
         r: scatterRange.text, sd: seed.text,
-        mn: minScale.text, mx: maxScale.text
+        ss: scatterStart.text, st: scatterTrans.text,
+        mn: minScale.text, mx: maxScale.text,
+        bs: blurSeed.text, bp: blurProb.text, bmin: blurMin.text, bmax: blurMax.text
     };
     presetsCache[String(idx)] = params;
     writePresets(presetsCache);
@@ -342,6 +379,7 @@ function loadSlot(idx) {
     entryDur.text = p.d || "2.0";
     entryBlur.text = p.b || "40";
     entryOffset.text = p.o || "80";
+    if (entryDirection && p.dir !== undefined) entryDirection.selection = parseInt(p.dir);
     exitStart.text = p.es || "3.5";
     exitDur.text = p.ed || "2.0";
     exitOffset.text = p.eo || "80";
@@ -350,8 +388,14 @@ function loadSlot(idx) {
     speed.text = p.sp || "1.0";
     scatterRange.text = p.r || "150";
     seed.text = p.sd || "1";
+    scatterStart.text = p.ss || "2.0";
+    scatterTrans.text = p.st || "1.0";
     minScale.text = p.mn || "50";
     maxScale.text = p.mx || "200";
+    blurSeed.text = p.bs || "10";
+    blurProb.text = p.bp || "40";
+    blurMin.text = p.bmin || "0";
+    blurMax.text = p.bmax || "25";
     setStatus("已加载预设 " + idx);
 }
 
@@ -359,6 +403,7 @@ function resetParams() {
     entryDur.text = "2.0";
     entryBlur.text = "40";
     entryOffset.text = "80";
+    if (entryDirection) entryDirection.selection = 0;
     exitStart.text = "3.5";
     exitDur.text = "2.0";
     exitOffset.text = "80";
@@ -367,8 +412,14 @@ function resetParams() {
     speed.text = "1.0";
     scatterRange.text = "150";
     seed.text = "1";
+    scatterStart.text = "2.0";
+    scatterTrans.text = "1.0";
     minScale.text = "50";
     maxScale.text = "200";
+    blurSeed.text = "10";
+    blurProb.text = "40";
+    blurMin.text = "0";
+    blurMax.text = "25";
     setStatus("参数已复位");
 }
 
@@ -396,6 +447,7 @@ function applyAnimation() {
         var pEntryDur    = Math.max(0.1, getVal(entryDur, 2.0));
         var pEntryBlur   = Math.max(0, getVal(entryBlur, 40));
         var pEntryOff    = getVal(entryOffset, 80);
+        var pDirection   = entryDirection && entryDirection.selection ? entryDirection.selection.index : 0;
         var pExitStart   = Math.max(0, getVal(exitStart, 3.5));
         var pExitDur     = Math.max(0.1, getVal(exitDur, 2.0));
         var pExitOff     = getVal(exitOffset, 80);
@@ -404,8 +456,14 @@ function applyAnimation() {
         var pSpeed       = Math.max(0.01, getVal(speed, 1.0));
         var pScatterRange = Math.max(0, getVal(scatterRange, 150));
         var pSeed        = Math.max(0, getVal(seed, 1));
+        var pScatterStart = Math.max(0, getVal(scatterStart, 2.0));
+        var pScatterTrans = Math.max(0.01, getVal(scatterTrans, 1.0));
         var pMinScale    = Math.max(1, getVal(minScale, 50));
         var pMaxScale    = Math.max(1, getVal(maxScale, 200));
+        var pBlurSeed    = Math.max(0, getVal(blurSeed, 10));
+        var pBlurProb    = Math.max(0, Math.min(100, getVal(blurProb, 40)));
+        var pBlurMin     = Math.max(0, getVal(blurMin, 0));
+        var pBlurMax     = Math.max(0, getVal(blurMax, 25));
 
         // 验证选区
         var comp = app.project.activeItem;
@@ -520,14 +578,22 @@ function applyAnimation() {
 
         var entryPosProp = addAnimProperty(entryProps, "ADBE Text Position");
         if (entryPosProp) {
-            // 根据属性值类型适配（可能是2D或3D）
+            // 根据方向计算入场 Position 初始偏移
+            var entryPosVal;
+            var pType = entryPosProp.propertyValueType;
+            if (pType === 6413) { // ThreeD
+                if (pDirection === 1) entryPosVal = [pEntryOff, 0, 0];       // 从右到左
+                else if (pDirection === 2) entryPosVal = [0, -pEntryOff, 0];  // 从上到下
+                else if (pDirection === 3) entryPosVal = [0, pEntryOff, 0];   // 从下到上
+                else entryPosVal = [-pEntryOff, 0, 0];                        // 从左到右（默认）
+            } else {
+                if (pDirection === 1) entryPosVal = [pEntryOff, 0];           // 从右到左
+                else if (pDirection === 2) entryPosVal = [0, -pEntryOff];     // 从上到下
+                else if (pDirection === 3) entryPosVal = [0, pEntryOff];      // 从下到上
+                else entryPosVal = [-pEntryOff, 0];                           // 从左到右（默认）
+            }
             try {
-                var pType = entryPosProp.propertyValueType;
-                if (pType === 6413) { // ThreeD
-                    entryPosProp.setValue([-pEntryOff, 0, 0]);
-                } else {
-                    entryPosProp.setValue([-pEntryOff, 0]);
-                }
+                entryPosProp.setValue(entryPosVal);
             } catch (e3) {
                 setStatus("错误: Position 属性设置失败");
             }
@@ -591,13 +657,30 @@ function applyAnimation() {
         }
 
         var exitPosProp = addAnimProperty(exitProps, "ADBE Text Position");
-        if (exitPosProp) exitPosProp.setValue([pExitOff, 0]);
+        if (exitPosProp) {
+            // 出场方向与入场对称
+            var exitPosVal;
+            var epType = exitPosProp.propertyValueType;
+            if (epType === 6413) { // ThreeD
+                if (pDirection === 1) exitPosVal = [-pExitOff, 0, 0];        // 入场从右→出场向左
+                else if (pDirection === 2) exitPosVal = [0, pExitOff, 0];     // 入场从上→出场向下
+                else if (pDirection === 3) exitPosVal = [0, -pExitOff, 0];    // 入场从下→出场向上
+                else exitPosVal = [pExitOff, 0, 0];                           // 入场从左→出场向右
+            } else {
+                if (pDirection === 1) exitPosVal = [-pExitOff, 0];            // 入场从右→出场向左
+                else if (pDirection === 2) exitPosVal = [0, pExitOff];        // 入场从上→出场向下
+                else if (pDirection === 3) exitPosVal = [0, -pExitOff];       // 入场从下→出场向上
+                else exitPosVal = [pExitOff, 0];                              // 入场从左→出场向右
+            }
+            exitPosProp.setValue(exitPosVal);
+        }
 
         // ============================================================
-        // Animator 3: 散落分布（逐字随机位置 + 随机大小）
+        // Animator 3: 散落分布（逐字随机位置 + 随机大小 + 随机模糊 + 时间渐入）
         // ============================================================
         // 每个字符独立一个动画器，Percent Range Selector 锁定单个字符
-        // 用 seedRandom() 做可复现的随机分布，种子=用户种子 + 字符索引
+        // 用 seedRandom() 做可复现的随机分布
+        // Position 表达式增加时间渐入因子，让散落从 0 渐变到目标偏移
         for (var ci = 1; ci <= textLen; ci++) {
             var sAnim = animatorsGroup.addProperty("ADBE Text Animator");
             sAnim.name = "歌词_散落_" + ci;
@@ -632,25 +715,46 @@ function applyAnimation() {
                 sPEnd.setValue(pEnd);
             }
 
-            // Position: seedRandom + random 生成随机 XY 偏移
+            // Position: seedRandom + random + 时间渐入因子
             var sPos = addAnimProperty(sProps, "ADBE Text Position");
             if (sPos) {
                 var posExpr = "seedRandom(" + pSeed + " + " + ci + ", true);\n";
                 posExpr += "r = " + pScatterRange + ";\n";
-                posExpr += "[random(-r, r), random(-r, r)]";
+                posExpr += "t = time - " + startTime.toFixed(3) + ";\n";
+                posExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
+                posExpr += "[random(-r, r) * fade, random(-r, r) * fade]";
                 sPos.expressionEnabled = true;
                 sPos.expression = posExpr;
             }
 
-            // Scale: seedRandom（不同种子）+ random 生成随机缩放
-            // 注意：AE Scale 属性值本身就是百分比，所以直接传 50~200 表示 50%~200%
+            // Scale: seedRandom（不同种子偏移）+ random 生成随机缩放
             var sScale = addAnimProperty(sProps, "ADBE Text Scale");
             if (sScale) {
                 var scaleExpr = "seedRandom(" + pSeed + " + " + ci + " + 9999, true);\n";
+                scaleExpr += "t = time - " + startTime.toFixed(3) + ";\n";
+                scaleExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
                 scaleExpr += "s = random(" + pMinScale + ", " + pMaxScale + ");\n";
-                scaleExpr += "[s, s]";
+                scaleExpr += "base = 100;\n";
+                scaleExpr += "[base + (s - base) * fade, base + (s - base) * fade]";
                 sScale.expressionEnabled = true;
                 sScale.expression = scaleExpr;
+            }
+
+            // 随机模糊：基于 blurSeed 决定该字符是否模糊
+            if (pBlurProb > 0) {
+                var sBlur = addAnimProperty(sProps, "ADBE Text Blur");
+                if (sBlur) {
+                    var blurExpr = "seedRandom(" + pBlurSeed + " + " + ci + ", true);\n";
+                    blurExpr += "r = random(0, 100);\n";
+                    blurExpr += "t = time - " + startTime.toFixed(3) + ";\n";
+                    blurExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
+                    blurExpr += "if (r < " + pBlurProb + ") {\n";
+                    blurExpr += "    seedRandom(" + pBlurSeed + " + " + ci + " + 5555, true);\n";
+                    blurExpr += "    random(" + pBlurMin + ", " + pBlurMax + ") * fade;\n";
+                    blurExpr += "} else { 0; }";
+                    sBlur.expressionEnabled = true;
+                    sBlur.expression = blurExpr;
+                }
             }
         }
 
@@ -702,10 +806,12 @@ function applyAnimation() {
         // ============================================================
         // 完成
         // ============================================================
+        var dirNames = ["左→右", "右→左", "上→下", "下→上"];
+        var dirName = dirNames[pDirection] || "左→右";
         setStatus("完成! 入场" + (pEntryDur / pSpeed).toFixed(1) +
-            "s 出场" + exitStartTime.toFixed(1) + "-" + exitEndTime.toFixed(1) +
+            "s(" + dirName + ") 出场" + exitStartTime.toFixed(1) + "-" + exitEndTime.toFixed(1) +
             "s 散落" + textLen + "字符 种子=" + pSeed);
-        $.writeln("歌词散落动画v2.0已应用成功: " + textLen + "字符 种子=" + pSeed);
+        $.writeln("歌词散落动画v3.0已应用成功: " + textLen + "字符 方向=" + dirName + " 种子=" + pSeed);
 
     } catch (err) {
         var errLine = err.line || err.lineNumber || "?";

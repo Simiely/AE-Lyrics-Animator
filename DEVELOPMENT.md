@@ -254,7 +254,100 @@ s = random(pMinScale, pMaxScale);  // 直接传百分比，如 50~200 表示 50%
        ├── 创建 出场 动画器（Opacity + Blur + Position）
        ├── 创建 N 个 散落 动画器（Position + Scale 随机表达式）
        └── 创建 N 个 高度 动画器（Position Y 正弦表达式）
+
+### v3.0 架构（方向选择 + 随机模糊 + 时间控制）
+
 ```
+歌词逐字散落动画工具.jsx
+  ├── UI 构建（ScriptUI Panel）
+  │    ├── 入场参数（持续时间 / 模糊 / 偏移 / **方向下拉框**）
+  │    ├── 出场参数（开始时间 / 持续时间 / 偏移）— 方向联动
+  │    ├── 高度错落（幅度 / 频率 / 速度）
+  │    ├── 散落分布（散布范围 / 种子 / **散落开始 / 散落过渡** / 最小缩放 / 最大缩放）
+  │    ├── 随机模糊（**模糊种子 / 模糊概率 / 最小模糊 / 最大模糊**）
+  │    ├── 预设管理（存储 1-4 / 使用 1-4 / 清除全部）
+  │    └── 应用 / 清除按钮 + 状态栏
+  ├── addAnimProperty() — 安全添加属性（多候选名 fallback，含 Scale）
+  ├── clearAnimators() — 清除所有"歌词_"前缀动画器
+  ├── XMP 存储
+  │    ├── readPresets() / writePresets() — 新增 5 个字段
+  │    └── presetsCache（内存缓存）
+  └── applyAnimation() — 主流程（全部 keyframe 以 comp.time 偏移）
+       ├── 查找 Text Animators 组（AE 2026 备选路径）
+       ├── 创建 入场 动画器（Opacity + Blur + **方向 Position**）
+       ├── 创建 出场 动画器（Opacity + Blur + **方向 Position 对称**）
+       ├── 创建 N 个 散落 动画器（Position **渐入** + Scale **渐入** + **随机 Blur**）
+       └── 创建 N 个 高度 动画器（Position Y 正弦表达式）
+```
+
+---
+
+### 13. v3.0 入场/出场方向选择
+
+**需求：** 支持文字从横向（左↔右）或竖向（上↔下）出现和消失。
+
+**实现：** UI 增加 `dropdownlist`，4 个选项对应 4 种方向。入场 Position 初始值和出场 Position 最终值根据方向计算：
+
+| 方向索引 | 方向 | 入场 Position | 出场 Position |
+|---------|------|-------------|-------------|
+| 0 | 从左到右 | `[-offset, 0]` | `[+offset, 0]` |
+| 1 | 从右到左 | `[+offset, 0]` | `[-offset, 0]` |
+| 2 | 从上到下 | `[0, -offset]` | `[0, +offset]` |
+| 3 | 从下到上 | `[0, +offset]` | `[0, -offset]` |
+
+3D 属性值类型（`propertyValueType === 6413`）时第三维填 0。
+
+### 14. v3.0 散落时间控制（修复"散布范围控不住"）
+
+**问题根因：** v2.0 散落 Position 表达式是恒定的随机偏移 `[random(-r,r), random(-r,r)]`，从第 0 帧就完全生效。当入场动画也在用 Position 偏移时，两个 Animator 的 Position 值叠加，导致：
+- 散落效果与入场动画同时存在，视觉上不可控
+- 用户调整散布范围参数，但入场 Position 也在同时作用，效果被稀释
+
+**解决方案：** 散落 Position 和 Scale 表达式增加基于时间的**渐入因子** `fade`：
+
+```javascript
+// 改进后的 Position 表达式
+seedRandom(pSeed + ci, true);
+r = pScatterRange;
+t = time - startTime;
+fade = linear(t, scatterStart, scatterStart + scatterTrans, 0, 1);
+[random(-r, r) * fade, random(-r, r) * fade]
+```
+
+- `scatterStart`：散落开始时间（绝对时间），建议 ≥ 入场持续时间
+- `scatterTrans`：散落过渡时间，控制从无到完全散开的渐变时长
+- `fade`：使用 AE `linear()` 函数，0→1 线性渐变
+
+Scale 同样增加渐入，从 100% 渐变到目标值：
+```javascript
+base = 100;
+[base + (s - base) * fade, base + (s - base) * fade]
+```
+
+### 15. v3.0 随机模糊效果
+
+**需求：** 基于随机种子，让部分文字模糊、部分清晰，增加视觉层次感。
+
+**实现：** 在散落 Animator 中为每个字符添加 Blur 属性，表达式逻辑：
+
+```javascript
+seedRandom(blurSeed + ci, true);
+r = random(0, 100);
+if (r < blurProb) {
+    seedRandom(blurSeed + ci + 5555, true);  // 独立种子
+    random(minBlur, maxBlur) * fade;          // 带渐入的模糊值
+} else {
+    0;  // 不模糊
+}
+```
+
+关键设计：
+- 第一层 `seedRandom` 决定"是否模糊"（概率判断）
+- 第二层 `seedRandom`（偏移 5555）独立决定"模糊多少"
+- 模糊值也受 `fade` 渐入因子控制，与散落同步过渡
+- `blurProb = 0` 时完全关闭随机模糊
+
+**预设兼容性：** 新增 5 个字段（dir, ss, st, bs, bp, bmin, bmax），旧预设缺失时使用合理默认值。
 
 ## 兼容性
 
