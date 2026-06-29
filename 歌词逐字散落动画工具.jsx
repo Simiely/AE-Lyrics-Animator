@@ -15,7 +15,7 @@ pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 6;
 pal.margins = [12, 10, 12, 10];
-pal.minimumSize = [320, 420];
+pal.minimumSize = [280, 420];
 
 // 标题
 var titleGrp = pal.add("group");
@@ -38,15 +38,15 @@ entryGrp.spacing = 4;
 entryGrp.margins = [10, 18, 10, 10];
 
 var g1 = entryGrp.add("group"); g1.orientation = "row"; g1.alignChildren = "left";
-g1.add("statictext", undefined, "持续时间 (秒)").preferredSize.width = 110;
+g1.add("statictext", undefined, "持续时间 (秒)").preferredSize.width = 100;
 var entryDur = g1.add("edittext", undefined, "2.0"); entryDur.characters = 6; entryDur.alignment = "fill";
 
 var g2 = entryGrp.add("group"); g2.orientation = "row"; g2.alignChildren = "left";
-g2.add("statictext", undefined, "最大模糊值").preferredSize.width = 110;
+g2.add("statictext", undefined, "最大模糊值").preferredSize.width = 100;
 var entryBlur = g2.add("edittext", undefined, "40"); entryBlur.characters = 6; entryBlur.alignment = "fill";
 
 var g3 = entryGrp.add("group"); g3.orientation = "row"; g3.alignChildren = "left";
-g3.add("statictext", undefined, "入场偏移 (像素)").preferredSize.width = 110;
+g3.add("statictext", undefined, "入场偏移 (像素)").preferredSize.width = 100;
 var entryOffset = g3.add("edittext", undefined, "80"); entryOffset.characters = 6; entryOffset.alignment = "fill";
 
 // ---------- 出场参数 ----------
@@ -58,16 +58,16 @@ exitGrp.spacing = 4;
 exitGrp.margins = [10, 18, 10, 10];
 
 var g4 = exitGrp.add("group"); g4.orientation = "row"; g4.alignChildren = "left";
-g4.add("statictext", undefined, "出场开始 (秒)").preferredSize.width = 110;
+g4.add("statictext", undefined, "出场开始 (秒)").preferredSize.width = 100;
 var exitStart = g4.add("edittext", undefined, "3.5"); exitStart.characters = 6; exitStart.alignment = "fill";
 g4.add("statictext", undefined, "（绝对时间）").preferredSize.width = 70;
 
 var g5 = exitGrp.add("group"); g5.orientation = "row"; g5.alignChildren = "left";
-g5.add("statictext", undefined, "出场持续时间 (秒)").preferredSize.width = 110;
+g5.add("statictext", undefined, "出场持续时间 (秒)").preferredSize.width = 100;
 var exitDur = g5.add("edittext", undefined, "2.0"); exitDur.characters = 6; exitDur.alignment = "fill";
 
 var g6 = exitGrp.add("group"); g6.orientation = "row"; g6.alignChildren = "left";
-g6.add("statictext", undefined, "出场偏移 (像素)").preferredSize.width = 110;
+g6.add("statictext", undefined, "出场偏移 (像素)").preferredSize.width = 100;
 var exitOffset = g6.add("edittext", undefined, "80"); exitOffset.characters = 6; exitOffset.alignment = "fill";
 
 // ---------- 高度错落参数 ----------
@@ -79,39 +79,39 @@ heightGrp.spacing = 4;
 heightGrp.margins = [10, 18, 10, 10];
 
 var g7 = heightGrp.add("group"); g7.orientation = "row"; g7.alignChildren = "left";
-g7.add("statictext", undefined, "波动幅度 (像素)").preferredSize.width = 110;
+g7.add("statictext", undefined, "波动幅度 (像素)").preferredSize.width = 100;
 var heightAmp = g7.add("edittext", undefined, "30"); heightAmp.characters = 6; heightAmp.alignment = "fill";
 
 var g8 = heightGrp.add("group"); g8.orientation = "row"; g8.alignChildren = "left";
-g8.add("statictext", undefined, "波动频率").preferredSize.width = 110;
+g8.add("statictext", undefined, "波动频率").preferredSize.width = 100;
 var heightFreq = g8.add("edittext", undefined, "0.7"); heightFreq.characters = 6; heightFreq.alignment = "fill";
 
 var g9 = heightGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "left";
-g9.add("statictext", undefined, "流动速度").preferredSize.width = 110;
+g9.add("statictext", undefined, "流动速度").preferredSize.width = 100;
 var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 6; speed.alignment = "fill";
 
 // ---------- 散落分布参数 ----------
 var scatterGrp = tabGrp.add("panel");
-scatterGrp.text = "  散落分布（随机位置 + 随机大小）";
+scatterGrp.text = "  散落分布（随机位置 / 大小）";
 scatterGrp.orientation = "column";
 scatterGrp.alignChildren = "right";
 scatterGrp.spacing = 4;
 scatterGrp.margins = [10, 18, 10, 10];
 
 var g7 = scatterGrp.add("group"); g7.orientation = "row"; g7.alignChildren = "left";
-g7.add("statictext", undefined, "散布范围 (像素)").preferredSize.width = 110;
+g7.add("statictext", undefined, "散布范围 (像素)").preferredSize.width = 90;
 var scatterRange = g7.add("edittext", undefined, "150"); scatterRange.characters = 6; scatterRange.alignment = "fill";
 
 var g8 = scatterGrp.add("group"); g8.orientation = "row"; g8.alignChildren = "left";
-g8.add("statictext", undefined, "随机种子").preferredSize.width = 110;
+g8.add("statictext", undefined, "随机种子").preferredSize.width = 100;
 var seed = g8.add("edittext", undefined, "1"); seed.characters = 6; seed.alignment = "fill";
 
 var g9 = scatterGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "left";
-g9.add("statictext", undefined, "最小缩放 (%)").preferredSize.width = 110;
+g9.add("statictext", undefined, "最小缩放 (%)").preferredSize.width = 100;
 var minScale = g9.add("edittext", undefined, "50"); minScale.characters = 6; minScale.alignment = "fill";
 
 var g10 = scatterGrp.add("group"); g10.orientation = "row"; g10.alignChildren = "left";
-g10.add("statictext", undefined, "最大缩放 (%)").preferredSize.width = 110;
+g10.add("statictext", undefined, "最大缩放 (%)").preferredSize.width = 100;
 var maxScale = g10.add("edittext", undefined, "200"); maxScale.characters = 6; maxScale.alignment = "fill";
 
 // ---------- 预设管理 ----------
@@ -643,12 +643,11 @@ function applyAnimation() {
             }
 
             // Scale: seedRandom（不同种子）+ random 生成随机缩放
+            // 注意：AE Scale 属性值本身就是百分比，所以直接传 50~200 表示 50%~200%
             var sScale = addAnimProperty(sProps, "ADBE Text Scale");
             if (sScale) {
                 var scaleExpr = "seedRandom(" + pSeed + " + " + ci + " + 9999, true);\n";
-                scaleExpr += "minS = " + (pMinScale / 100) + ";\n";
-                scaleExpr += "maxS = " + (pMaxScale / 100) + ";\n";
-                scaleExpr += "s = random(minS, maxS);\n";
+                scaleExpr += "s = random(" + pMinScale + ", " + pMaxScale + ");\n";
                 scaleExpr += "[s, s]";
                 sScale.expressionEnabled = true;
                 sScale.expression = scaleExpr;
