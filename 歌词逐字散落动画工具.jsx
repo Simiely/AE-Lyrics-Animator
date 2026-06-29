@@ -88,7 +88,7 @@ exitEnable.value = true;
 var g4 = exitGrp.add("group"); g4.orientation = "row"; g4.alignChildren = "left";
 g4.add("statictext", undefined, "出场开始 (秒)").preferredSize.width = 90;
 var exitStart = g4.add("edittext", undefined, "3.5"); exitStart.characters = 5; exitStart.alignment = "fill";
-g4.add("statictext", undefined, "（绝对时间）").preferredSize.width = 65;
+g4.add("statictext", undefined, "(绝对时间)").preferredSize.width = 80;
 
 var g5 = exitGrp.add("group"); g5.orientation = "row"; g5.alignChildren = "left";
 g5.add("statictext", undefined, "出场持续时间 (秒)").preferredSize.width = 90;
@@ -157,7 +157,7 @@ var seed = gS2.add("edittext", undefined, "1"); seed.characters = 5; seed.alignm
 var gS3 = scatterGrp.add("group"); gS3.orientation = "row"; gS3.alignChildren = "left";
 gS3.add("statictext", undefined, "散落开始 (秒)").preferredSize.width = 90;
 var scatterStart = gS3.add("edittext", undefined, "2.0"); scatterStart.characters = 5; scatterStart.alignment = "fill";
-gS3.add("statictext", undefined, "（绝对时间）").preferredSize.width = 65;
+gS3.add("statictext", undefined, "(绝对时间)").preferredSize.width = 80;
 
 var gS4 = scatterGrp.add("group"); gS4.orientation = "row"; gS4.alignChildren = "left";
 gS4.add("statictext", undefined, "散落过渡 (秒)").preferredSize.width = 90;
