@@ -380,6 +380,20 @@ if (r < blurProb) {
 - edittext `alignment = "fill"` 单字符串在 row 容器中只作用垂直轴，必须用 `["fill", "center"]` 双轴格式才能在水平方向撑满。
 - 面板 `alignChildren = "fill"` + 行 group `alignChildren = "fill"` 形成三层 fill 体系，确保输入框自动适应面板宽度。
 
+---
+
+### 19. v3.4 代码重构
+
+**目标：** 消除重复代码，提高可维护性。
+
+**改动：**
+1. `clearAnimators()` 复用 `findAnimatorsGroup()` — 去掉 13 行重复的 Animators 组查找逻辑
+2. 提取 `setBlurValue(prop, val)` 和 `setBlurValueAtKey(prop, key, val)` — 封装 2D/1D 类型判断，入场/出场 Blur 设置从各 20+ 行缩到 8 行
+3. `addAnimProperty()` 循环变量 `ci` → `ai` — 避免与外层散落/高度循环的 `ci` 混淆
+4. 出场模糊变量 `pEntryBlur` → `pExitBlur` — 语义正确
+
+**效果：** 净减少 32 行（966→934），无功能变更。
+
 ## 兼容性
 
 测试环境：
