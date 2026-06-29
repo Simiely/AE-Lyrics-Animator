@@ -18,6 +18,7 @@ pal.alignChildren = ["left", "top"];
 pal.spacing = 4;
 pal.margins = [8, 8, 8, 8];
 pal.preferredSize.width = 280;
+pal.maximumSize.width = 280;
 pal.minimumSize = [280, 560];
 
 // 标题
@@ -248,15 +249,15 @@ resetBtn.onClick = function() { resetParams(); };
 var btnGrp = pal.add("group");
 btnGrp.orientation = "row";
 btnGrp.alignment = "center";
-btnGrp.spacing = 20;
+btnGrp.spacing = 10;
 btnGrp.margins = [0, 6, 0, 0];
 
-var applyBtn = btnGrp.add("button", undefined, "应用动画");
-applyBtn.preferredSize.width = 130;
+var applyBtn = btnGrp.add("button", undefined, "应用");
+applyBtn.preferredSize.width = 110;
 applyBtn.preferredSize.height = 28;
 
-var clearBtn = btnGrp.add("button", undefined, "清除动画");
-clearBtn.preferredSize.width = 130;
+var clearBtn = btnGrp.add("button", undefined, "清除");
+clearBtn.preferredSize.width = 110;
 clearBtn.preferredSize.height = 28;
 
 var statusBar = pal.add("statictext", undefined, "就绪 - 选中一个文本图层后点击应用");
