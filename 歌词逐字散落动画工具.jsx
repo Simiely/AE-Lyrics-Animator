@@ -1,5 +1,5 @@
 // ============================================================
-// 歌词逐字散落动画工具  v3.2  —  for After Effects 2026
+// 歌词逐字散落动画工具  v3.3  —  for After Effects 2026
 // ============================================================
 // 功能：选中文本图层后，自动生成逐字动画
 // - 入场方向可选（左/右/上/下），逐字/一起模式
@@ -12,7 +12,7 @@
 // ============================================================
 
 // ---- 构建面板 ----
-var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.2", undefined);
+var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.3", undefined);
 pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 4;
@@ -940,7 +940,7 @@ function applyAnimation() {
         if (pHeightEnbl) parts.push("波浪");
         var msg = parts.length > 0 ? parts.join(" ") : "无动画（全部关闭）";
         setStatus("完成! " + msg);
-        $.writeln("歌词散落动画v3.2已应用成功: " + msg);
+        $.writeln("歌词散落动画v3.3已应用成功: " + msg);
 
     } catch (err) {
         var errLine = err.line || err.lineNumber || "?";

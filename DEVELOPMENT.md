@@ -349,6 +349,37 @@ if (r < blurProb) {
 
 **预设兼容性：** 新增 5 个字段（dir, ss, st, bs, bp, bmin, bmax），旧预设缺失时使用合理默认值。
 
+---
+
+### 16. v3.1 入场/出场模式：逐字 vs 一起
+
+**需求：** 支持文字逐字出现/消失，或整段一起出现/消失。
+
+**逐字模式（默认）：** Range Selector Start 关键帧扫描（0→100 或 100→0），配合 Opacity/Blur/Position 静态值。
+
+**一起模式：** Range Selector 覆盖全部字符，Opacity/Blur/Position 用关键帧驱动整段文字统一动画。
+
+### 17. v3.1 面板独立总开关
+
+每个功能面板新增 `checkbox` 总开关，取消勾选跳过该动画器生成。灵活组合（如只要散落+波浪，关闭入场出场）。
+
+### 18. v3.2 UI 迭代与 v3.3 最终布局
+
+**v3.2 经历多次 UI 调整**，最终在 v3.3 稳定：
+
+| 元素 | 宽度 | 说明 |
+|------|------|------|
+| 标签 | 110px | 中文标签完整显示 |
+| 输入框 | `["fill","center"]` | 双轴 fill 撑满剩余空间 |
+| 下拉菜单 | 100px | 选项文字完整 |
+| 时间提示 | 80px | 半角括号 `(绝对时间)` |
+| 按钮 | 130px × 2 | 间距 20px，380px 内一行放下 |
+
+**关键发现：**
+- AE dockable Panel 宽度由 AE 主 UI 控制（约 380px），脚本无法改变。`minimumSize`/`maximumSize`/`preferredSize` 在 Panel 模式下不影响实际面板宽度。
+- edittext `alignment = "fill"` 单字符串在 row 容器中只作用垂直轴，必须用 `["fill", "center"]` 双轴格式才能在水平方向撑满。
+- 面板 `alignChildren = "fill"` + 行 group `alignChildren = "fill"` 形成三层 fill 体系，确保输入框自动适应面板宽度。
+
 ## 兼容性
 
 测试环境：
