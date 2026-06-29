@@ -130,6 +130,15 @@ for (var px = 1; px <= 4; px++) {
     loadBtns.push(lBtn);
 }
 
+// 复位按钮行
+var resetRow = presetGrp.add("group");
+resetRow.orientation = "row";
+resetRow.alignChildren = "center";
+resetRow.spacing = 2;
+var resetBtn = resetRow.add("button", undefined, "复位");
+resetBtn.preferredSize.width = 80;
+resetBtn.preferredSize.height = 22;
+
 // 绑定存储按钮
 for (var px = 1; px <= 4; px++) {
     saveBtns[px - 1].onClick = (function(idx) {
@@ -143,6 +152,7 @@ for (var px = 1; px <= 4; px++) {
     })(px);
 }
 clearPresetBtn.onClick = function() { clearAllPresets(); };
+resetBtn.onClick = function() { resetParams(); };
 
 // ---------- 按钮 ----------
 var btnGrp = pal.add("group");
@@ -320,6 +330,19 @@ function loadSlot(idx) {
     heightFreq.text = p.f || "0.7";
     speed.text = p.sp || "1.0";
     setStatus("已加载预设 " + idx);
+}
+
+function resetParams() {
+    entryDur.text = "2.0";
+    entryBlur.text = "40";
+    entryOffset.text = "80";
+    exitStart.text = "3.5";
+    exitDur.text = "2.0";
+    exitOffset.text = "80";
+    heightAmp.text = "30";
+    heightFreq.text = "0.7";
+    speed.text = "1.0";
+    setStatus("参数已复位");
 }
 
 function clearAllPresets() {
@@ -542,7 +565,7 @@ function applyAnimation() {
         // ============================================================
         // Animator 3: 高度错落（逐字独立动画器）
         // ============================================================
-        // 每个字符单独建一个动画器，用硬编码索引做相位偏移
+        // 每个字符单独建一个动画器，用 Percent Range Selector 锁定单个字符范围，表达式做相位偏移
         for (var ci = 1; ci <= textLen; ci++) {
             var hAnim = animatorsGroup.addProperty("ADBE Text Animator");
             hAnim.name = "歌词_高度_" + ci;
@@ -560,35 +583,22 @@ function applyAnimation() {
             }
             if (!hProps) continue;
 
-            // 添加 Selector，仅影响当前字符（Index 模式 + keyframe）
+            // 添加 Selector，仅影响当前字符（Percent 模式，已验证在所有 AE 2026 版本生效）
             var hSel = hAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
-            // 用 keyframe 绕过隐藏属性的限制
-            var hIdxStart = hSel.property("ADBE Text Index Start");
-            if (!hIdxStart) hIdxStart = hSel.property("ADBE Text Start");
-            if (!hIdxStart) hIdxStart = hSel.property(4);
-            var hIdxEnd = hSel.property("ADBE Text Index End");
-            if (!hIdxEnd) hIdxEnd = hSel.property("ADBE Text End");
-            if (!hIdxEnd) hIdxEnd = hSel.property(5);
-            if (hIdxStart && hIdxEnd) {
-                try {
-                    // 先尝试直接 setValue
-                    hIdxStart.setValue(ci);
-                    hIdxEnd.setValue(ci);
-                } catch (eIdx) {
-                    // 隐藏属性用 addKey + setValueAtKey
-                    try {
-                        var sk1 = hIdxStart.addKey(startTime);
-                        hIdxStart.setValueAtKey(sk1, ci);
-                        var ek1 = hIdxEnd.addKey(startTime);
-                        hIdxEnd.setValueAtKey(ek1, ci);
-                    } catch (eIdx2) {
-                        // 最终回退：表达式
-                        try {
-                            hIdxStart.expression = String(ci);
-                            hIdxEnd.expression = String(ci);
-                        } catch (eIdx3) {}
-                    }
-                }
+            var hPStart = hSel.property("ADBE Text Percent Start");
+            if (!hPStart) hPStart = hSel.property("ADBE Text Start");
+            if (!hPStart) hPStart = hSel.property("Start");
+            if (!hPStart && hSel.numProperties >= 1) hPStart = hSel.property(1);
+            var hPEnd = hSel.property("ADBE Text Percent End");
+            if (!hPEnd) hPEnd = hSel.property("ADBE Text End");
+            if (!hPEnd) hPEnd = hSel.property("End");
+            if (!hPEnd && hSel.numProperties >= 2) hPEnd = hSel.property(2);
+            if (hPStart && hPEnd) {
+                // 按百分比划分单个字符的范围
+                var pStart = ((ci - 1) / textLen) * 100;
+                var pEnd = (ci / textLen) * 100;
+                hPStart.setValue(pStart);
+                hPEnd.setValue(pEnd);
             }
 
             // 添加 Position + 表达式（ci 做相位偏移）
