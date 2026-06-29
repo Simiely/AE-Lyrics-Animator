@@ -46,26 +46,26 @@ var gEntryEnable = entryGrp.add("group"); gEntryEnable.orientation = "row"; gEnt
 var entryEnable = gEntryEnable.add("checkbox", undefined, "  启用入场动画");
 entryEnable.value = true;
 
-var g1 = entryGrp.add("group"); g1.orientation = "row"; g1.alignChildren = "left";
-g1.add("statictext", undefined, "持续时间 (秒)").preferredSize.width = 90;
+var g1 = entryGrp.add("group"); g1.orientation = "row"; g1.alignChildren = "fill";
+g1.add("statictext", undefined, "持续时间 (秒)").preferredSize.width = 110;
 var entryDur = g1.add("edittext", undefined, "2.0"); entryDur.characters = 5; entryDur.alignment = "fill";
 
-var g2 = entryGrp.add("group"); g2.orientation = "row"; g2.alignChildren = "left";
-g2.add("statictext", undefined, "最大模糊值").preferredSize.width = 90;
+var g2 = entryGrp.add("group"); g2.orientation = "row"; g2.alignChildren = "fill";
+g2.add("statictext", undefined, "最大模糊值").preferredSize.width = 110;
 var entryBlur = g2.add("edittext", undefined, "40"); entryBlur.characters = 5; entryBlur.alignment = "fill";
 
-var g3 = entryGrp.add("group"); g3.orientation = "row"; g3.alignChildren = "left";
-g3.add("statictext", undefined, "入场偏移 (像素)").preferredSize.width = 90;
+var g3 = entryGrp.add("group"); g3.orientation = "row"; g3.alignChildren = "fill";
+g3.add("statictext", undefined, "入场偏移 (像素)").preferredSize.width = 110;
 var entryOffset = g3.add("edittext", undefined, "80"); entryOffset.characters = 5; entryOffset.alignment = "fill";
 
-var gDir = entryGrp.add("group"); gDir.orientation = "row"; gDir.alignChildren = "left";
-gDir.add("statictext", undefined, "入场方向").preferredSize.width = 90;
+var gDir = entryGrp.add("group"); gDir.orientation = "row"; gDir.alignChildren = "fill";
+gDir.add("statictext", undefined, "入场方向").preferredSize.width = 110;
 var entryDirection = gDir.add("dropdownlist", undefined, ["从左到右", "从右到左", "从上到下", "从下到上"]);
 entryDirection.selection = 0;
 entryDirection.preferredSize.width = 100;
 
-var gEntryMode = entryGrp.add("group"); gEntryMode.orientation = "row"; gEntryMode.alignChildren = "left";
-gEntryMode.add("statictext", undefined, "入场模式").preferredSize.width = 90;
+var gEntryMode = entryGrp.add("group"); gEntryMode.orientation = "row"; gEntryMode.alignChildren = "fill";
+gEntryMode.add("statictext", undefined, "入场模式").preferredSize.width = 110;
 var entryMode = gEntryMode.add("dropdownlist", undefined, ["逐字出现", "一起出现"]);
 entryMode.selection = 0;
 entryMode.preferredSize.width = 100;
@@ -85,21 +85,21 @@ var gExitEnable = exitGrp.add("group"); gExitEnable.orientation = "row"; gExitEn
 var exitEnable = gExitEnable.add("checkbox", undefined, "  启用出场动画");
 exitEnable.value = true;
 
-var g4 = exitGrp.add("group"); g4.orientation = "row"; g4.alignChildren = "left";
-g4.add("statictext", undefined, "出场开始 (秒)").preferredSize.width = 90;
+var g4 = exitGrp.add("group"); g4.orientation = "row"; g4.alignChildren = "fill";
+g4.add("statictext", undefined, "出场开始 (秒)").preferredSize.width = 110;
 var exitStart = g4.add("edittext", undefined, "3.5"); exitStart.characters = 5; exitStart.alignment = "fill";
 g4.add("statictext", undefined, "(绝对时间)").preferredSize.width = 80;
 
-var g5 = exitGrp.add("group"); g5.orientation = "row"; g5.alignChildren = "left";
-g5.add("statictext", undefined, "出场持续时间 (秒)").preferredSize.width = 90;
+var g5 = exitGrp.add("group"); g5.orientation = "row"; g5.alignChildren = "fill";
+g5.add("statictext", undefined, "出场持续时间 (秒)").preferredSize.width = 110;
 var exitDur = g5.add("edittext", undefined, "2.0"); exitDur.characters = 5; exitDur.alignment = "fill";
 
-var g6 = exitGrp.add("group"); g6.orientation = "row"; g6.alignChildren = "left";
-g6.add("statictext", undefined, "出场偏移 (像素)").preferredSize.width = 90;
+var g6 = exitGrp.add("group"); g6.orientation = "row"; g6.alignChildren = "fill";
+g6.add("statictext", undefined, "出场偏移 (像素)").preferredSize.width = 110;
 var exitOffset = g6.add("edittext", undefined, "80"); exitOffset.characters = 5; exitOffset.alignment = "fill";
 
-var gExitMode = exitGrp.add("group"); gExitMode.orientation = "row"; gExitMode.alignChildren = "left";
-gExitMode.add("statictext", undefined, "出场模式").preferredSize.width = 90;
+var gExitMode = exitGrp.add("group"); gExitMode.orientation = "row"; gExitMode.alignChildren = "fill";
+gExitMode.add("statictext", undefined, "出场模式").preferredSize.width = 110;
 var exitMode = gExitMode.add("dropdownlist", undefined, ["逐字消失", "一起消失"]);
 exitMode.selection = 0;
 exitMode.preferredSize.width = 100;
@@ -119,16 +119,16 @@ var gHeightEnable = heightGrp.add("group"); gHeightEnable.orientation = "row"; g
 var heightEnable = gHeightEnable.add("checkbox", undefined, "  启用高度错落");
 heightEnable.value = true;
 
-var g7 = heightGrp.add("group"); g7.orientation = "row"; g7.alignChildren = "left";
-g7.add("statictext", undefined, "波动幅度 (像素)").preferredSize.width = 90;
+var g7 = heightGrp.add("group"); g7.orientation = "row"; g7.alignChildren = "fill";
+g7.add("statictext", undefined, "波动幅度 (像素)").preferredSize.width = 110;
 var heightAmp = g7.add("edittext", undefined, "30"); heightAmp.characters = 5; heightAmp.alignment = "fill";
 
-var g8 = heightGrp.add("group"); g8.orientation = "row"; g8.alignChildren = "left";
-g8.add("statictext", undefined, "波动频率").preferredSize.width = 90;
+var g8 = heightGrp.add("group"); g8.orientation = "row"; g8.alignChildren = "fill";
+g8.add("statictext", undefined, "波动频率").preferredSize.width = 110;
 var heightFreq = g8.add("edittext", undefined, "0.7"); heightFreq.characters = 5; heightFreq.alignment = "fill";
 
-var g9 = heightGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "left";
-g9.add("statictext", undefined, "流动速度").preferredSize.width = 90;
+var g9 = heightGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "fill";
+g9.add("statictext", undefined, "流动速度").preferredSize.width = 110;
 var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 5; speed.alignment = "fill";
 
 // ======================================================================
@@ -146,45 +146,45 @@ var gScatterEnable = scatterGrp.add("group"); gScatterEnable.orientation = "row"
 var scatterEnable = gScatterEnable.add("checkbox", undefined, "  启用散落分布");
 scatterEnable.value = true;
 
-var gS1 = scatterGrp.add("group"); gS1.orientation = "row"; gS1.alignChildren = "left";
-gS1.add("statictext", undefined, "散布范围 (像素)").preferredSize.width = 90;
+var gS1 = scatterGrp.add("group"); gS1.orientation = "row"; gS1.alignChildren = "fill";
+gS1.add("statictext", undefined, "散布范围 (像素)").preferredSize.width = 110;
 var scatterRange = gS1.add("edittext", undefined, "150"); scatterRange.characters = 5; scatterRange.alignment = "fill";
 
-var gS2 = scatterGrp.add("group"); gS2.orientation = "row"; gS2.alignChildren = "left";
-gS2.add("statictext", undefined, "随机种子").preferredSize.width = 90;
+var gS2 = scatterGrp.add("group"); gS2.orientation = "row"; gS2.alignChildren = "fill";
+gS2.add("statictext", undefined, "随机种子").preferredSize.width = 110;
 var seed = gS2.add("edittext", undefined, "1"); seed.characters = 5; seed.alignment = "fill";
 
-var gS3 = scatterGrp.add("group"); gS3.orientation = "row"; gS3.alignChildren = "left";
-gS3.add("statictext", undefined, "散落开始 (秒)").preferredSize.width = 90;
+var gS3 = scatterGrp.add("group"); gS3.orientation = "row"; gS3.alignChildren = "fill";
+gS3.add("statictext", undefined, "散落开始 (秒)").preferredSize.width = 110;
 var scatterStart = gS3.add("edittext", undefined, "2.0"); scatterStart.characters = 5; scatterStart.alignment = "fill";
 gS3.add("statictext", undefined, "(绝对时间)").preferredSize.width = 80;
 
-var gS4 = scatterGrp.add("group"); gS4.orientation = "row"; gS4.alignChildren = "left";
-gS4.add("statictext", undefined, "散落过渡 (秒)").preferredSize.width = 90;
+var gS4 = scatterGrp.add("group"); gS4.orientation = "row"; gS4.alignChildren = "fill";
+gS4.add("statictext", undefined, "散落过渡 (秒)").preferredSize.width = 110;
 var scatterTrans = gS4.add("edittext", undefined, "1.0"); scatterTrans.characters = 5; scatterTrans.alignment = "fill";
 
-var gS5 = scatterGrp.add("group"); gS5.orientation = "row"; gS5.alignChildren = "left";
-gS5.add("statictext", undefined, "最小缩放 (%)").preferredSize.width = 90;
+var gS5 = scatterGrp.add("group"); gS5.orientation = "row"; gS5.alignChildren = "fill";
+gS5.add("statictext", undefined, "最小缩放 (%)").preferredSize.width = 110;
 var minScale = gS5.add("edittext", undefined, "50"); minScale.characters = 5; minScale.alignment = "fill";
 
-var gS6 = scatterGrp.add("group"); gS6.orientation = "row"; gS6.alignChildren = "left";
-gS6.add("statictext", undefined, "最大缩放 (%)").preferredSize.width = 90;
+var gS6 = scatterGrp.add("group"); gS6.orientation = "row"; gS6.alignChildren = "fill";
+gS6.add("statictext", undefined, "最大缩放 (%)").preferredSize.width = 110;
 var maxScale = gS6.add("edittext", undefined, "200"); maxScale.characters = 5; maxScale.alignment = "fill";
 
-var gS7 = scatterGrp.add("group"); gS7.orientation = "row"; gS7.alignChildren = "left";
-gS7.add("statictext", undefined, "模糊随机种子").preferredSize.width = 90;
+var gS7 = scatterGrp.add("group"); gS7.orientation = "row"; gS7.alignChildren = "fill";
+gS7.add("statictext", undefined, "模糊随机种子").preferredSize.width = 110;
 var blurSeed = gS7.add("edittext", undefined, "10"); blurSeed.characters = 5; blurSeed.alignment = "fill";
 
-var gS8 = scatterGrp.add("group"); gS8.orientation = "row"; gS8.alignChildren = "left";
-gS8.add("statictext", undefined, "模糊概率 (%)").preferredSize.width = 90;
+var gS8 = scatterGrp.add("group"); gS8.orientation = "row"; gS8.alignChildren = "fill";
+gS8.add("statictext", undefined, "模糊概率 (%)").preferredSize.width = 110;
 var blurProb = gS8.add("edittext", undefined, "40"); blurProb.characters = 5; blurProb.alignment = "fill";
 
-var gS9 = scatterGrp.add("group"); gS9.orientation = "row"; gS9.alignChildren = "left";
-gS9.add("statictext", undefined, "最小模糊值").preferredSize.width = 90;
+var gS9 = scatterGrp.add("group"); gS9.orientation = "row"; gS9.alignChildren = "fill";
+gS9.add("statictext", undefined, "最小模糊值").preferredSize.width = 110;
 var blurMin = gS9.add("edittext", undefined, "0"); blurMin.characters = 5; blurMin.alignment = "fill";
 
-var gS10 = scatterGrp.add("group"); gS10.orientation = "row"; gS10.alignChildren = "left";
-gS10.add("statictext", undefined, "最大模糊值").preferredSize.width = 90;
+var gS10 = scatterGrp.add("group"); gS10.orientation = "row"; gS10.alignChildren = "fill";
+gS10.add("statictext", undefined, "最大模糊值").preferredSize.width = 110;
 var blurMax = gS10.add("edittext", undefined, "25"); blurMax.characters = 5; blurMax.alignment = "fill";
 
 // ======================================================================
