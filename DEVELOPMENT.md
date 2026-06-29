@@ -86,7 +86,67 @@ if (pType === 6413) { // ThreeD
 
 **问题：** AE ExtendScript 的 `alert()` 弹窗内容不可复制，长调试信息无法完整获取。
 
-**解决方案：** 开发阶段实现了 `showDebugDialog()` 函数，提供一个带多行文本框的窗口，支持全选复制（Ctrl+A, Ctrl+C），关闭后按 Shift 键可重新定位到问题行。
+**解决方案：** 开发阶段实现了 `showDebugDialog()` 函数，提供一个带多行文本框的窗口，支持全选复制（Ctrl+A, Ctrl+C）。发布后移除。
+
+### 8. 逐字独立动画器方案（替代 textIndex）
+
+**问题：** `textIndex` 表达式变量在 AE 2026 中不可用，无法在表达式中获取当前字符索引来创建独立的相位偏移。
+
+**早期方案：** 单动画器 + Range Selector 扫描 + 时间基表达式 → 所有字符一起浮动，无法错落。
+
+**最终方案：** 每个字符独立创建一个文字动画器，通过 Range Selector 锁定到单个字符：
+
+```
+字符1 → 动画器"歌词_高度_1" → Range [83.33, 100] → Position 表达式 idx=1
+字符2 → 动画器"歌词_高度_2" → Range [66.67, 83.33] → Position 表达式 idx=2
+...
+```
+
+**关键实现细节：**
+1. Range Selector 的 Index Start/End 在 AE 2026 中是隐藏属性（3D 类型），`setValue()` 失败
+2. 解决方案：先用 `addKey(startTime)` + `setValueAtKey()` 绕过隐藏限制
+3. 再回退到 `expression = String(ci)` 用表达式返回常量值
+4. Percent 模式精度不足以隔离单个字符，Index 模式是精确方案
+
+### 9. 动画起始时间偏移
+
+**需求：** 动画应从合成中播放头所在位置开始，而非固定从 0 秒。
+
+**实现：** 读 `comp.time` 作为基准时间，所有关键帧时间偏移：
+
+```javascript
+var startTime = comp.time;
+// 所有 addKey / setValueAtKey 都使用 startTime + offset
+var k1 = entryStartProp.addKey(startTime);
+entryStartProp.setValueAtKey(k1, 0);
+var k2 = entryStartProp.addKey(startTime + pEntryDur / pSpeed);
+entryStartProp.setValueAtKey(k2, 100);
+```
+
+受影响的 6 处关键帧：
+- 入场 Start：`startTime` → `startTime + 入场持续时间`
+- 出场 Start：`startTime + 出场开始` → `startTime + 出场结束`
+- 高度 Index 锁定：`startTime`
+
+### 10. 预设存储与持久化
+
+**需求：** 用户保存的预设参数应随工程文件保存，换电脑打开仍可保留。
+
+**方案：** 利用 `app.project.xmpPacket`（AE 工程的 XMP 元数据），用 XML 注释格式嵌入 JSON：
+
+```javascript
+<!--AE_Lyrics_Presets:{"1":{"d":"2.0","b":"40",...},"2":{...}}-->
+```
+
+**双缓存策略：**
+
+```
+保存 → 更新内存缓存 presetsCache → 异步写入 XMP（工程文件）
+加载 → 直接从 presetsCache 读取（不依赖 XMP 回读）
+初始化 → 从 XMP 读取到 presetsCache → 更新按钮状态
+```
+
+这种设计确保即使 XMP 写入失败（如无工程文件时），面板内功能依然正常。
 
 ## 架构设计
 
@@ -95,14 +155,21 @@ if (pType === 6413) { // ThreeD
 ```
 歌词逐字动画工具.jsx
   ├── UI 构建（ScriptUI Panel）
-  ├── 参数面板（入场 / 出场 / 高度错落）
-  ├── clearAnimators() — 清除动画器
-  ├── addAnimProperty() — 安全添加属性（多候选名）
-  └── applyAnimation() — 主流程
-       ├── 查找 Text Animators 组
+  │    ├── 入场参数（持续时间 / 模糊 / 偏移）
+  │    ├── 出场参数（开始时间 / 持续时间 / 偏移）
+  │    ├── 高度错落（幅度 / 频率 / 速度）
+  │    ├── 预设管理（存储 1-4 / 使用 1-4 / 清除全部）
+  │    └── 应用 / 清除按钮 + 状态栏
+  ├── addAnimProperty() — 安全添加属性（多候选名 fallback）
+  ├── clearAnimators() — 清除所有"歌词_"前缀动画器
+  ├── XMP 存储
+  │    ├── readPresets() / writePresets()
+  │    └── presetsCache（内存缓存）
+  └── applyAnimation() — 主流程（全部 keyframe 以 comp.time 偏移）
+       ├── 查找 Text Animators 组（AE 2026 备选路径）
        ├── 创建 入场 动画器（Opacity + Blur + Position）
        ├── 创建 出场 动画器（Opacity + Blur + Position）
-       └── 创建 高度错落 动画器（逐字 Position 表达式）
+       └── 创建 N 个 高度错落 动画器（逐字 Index 锁定 + Position 表达式）
 ```
 
 ## 兼容性

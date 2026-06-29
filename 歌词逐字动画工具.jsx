@@ -88,6 +88,62 @@ var g9 = heightGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "lef
 g9.add("statictext", undefined, "流动速度").preferredSize.width = 110;
 var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 6; speed.alignment = "fill";
 
+// ---------- 预设管理 ----------
+var presetGrp = pal.add("panel");
+presetGrp.text = "  预设管理";
+presetGrp.orientation = "column";
+presetGrp.alignChildren = "fill";
+presetGrp.spacing = 4;
+presetGrp.margins = [10, 18, 10, 8];
+
+// 存储预设行
+var saveRow = presetGrp.add("group");
+saveRow.orientation = "row";
+saveRow.alignChildren = "center";
+saveRow.spacing = 2;
+var saveLabel = saveRow.add("statictext", undefined, "存储");
+saveLabel.preferredSize.width = 28;
+var saveBtns = [];
+for (var px = 1; px <= 4; px++) {
+    var sBtn = saveRow.add("button", undefined, String(px));
+    sBtn.preferredSize.width = 28;
+    sBtn.preferredSize.height = 22;
+    saveBtns.push(sBtn);
+}
+var clearPresetBtn = saveRow.add("button", undefined, "清除全部");
+clearPresetBtn.preferredSize.width = 64;
+clearPresetBtn.preferredSize.height = 22;
+
+// 使用预设行
+var loadRow = presetGrp.add("group");
+loadRow.orientation = "row";
+loadRow.alignChildren = "center";
+loadRow.spacing = 2;
+var loadLabel = loadRow.add("statictext", undefined, "使用");
+loadLabel.preferredSize.width = 28;
+var loadBtns = [];
+for (var px = 1; px <= 4; px++) {
+    var lBtn = loadRow.add("button", undefined, String(px));
+    lBtn.preferredSize.width = 28;
+    lBtn.preferredSize.height = 22;
+    lBtn.enabled = false;
+    loadBtns.push(lBtn);
+}
+
+// 绑定存储按钮
+for (var px = 1; px <= 4; px++) {
+    saveBtns[px - 1].onClick = (function(idx) {
+        return function() { saveSlot(idx); };
+    })(px);
+}
+// 绑定使用按钮
+for (var px = 1; px <= 4; px++) {
+    loadBtns[px - 1].onClick = (function(idx) {
+        return function() { loadSlot(idx); };
+    })(px);
+}
+clearPresetBtn.onClick = function() { clearAllPresets(); };
+
 // ---------- 按钮 ----------
 var btnGrp = pal.add("group");
 btnGrp.orientation = "row";
@@ -107,6 +163,11 @@ clearBtn.preferredSize.height = 28;
 var statusBar = pal.add("statictext", undefined, "就绪 - 选中一个文本图层后点击应用");
 statusBar.alignment = "left";
 statusBar.margins = [0, 4, 0, 0];
+
+// 提示
+var tipBar = pal.add("statictext", undefined, "提示：文字显示不全时，在末尾加空格即可");
+tipBar.alignment = "left";
+tipBar.margins = [0, 0, 0, 0];
 
 // ============================================================
 // 核心功能
@@ -197,6 +258,85 @@ function addAnimProperty(propsGroup, propType) {
     return null;
 }
 
+// ---- XMP 存储（随工程文件保存预设） ----
+var XMP_MARKER = "<!--AE_Lyrics_Presets:";
+
+function readPresets() {
+    try {
+        var xmp = app.project.xmpPacket;
+        if (!xmp) return null;
+        var s = xmp.indexOf(XMP_MARKER);
+        if (s < 0) return null;
+        var d = s + XMP_MARKER.length;
+        var e = xmp.indexOf("-->", d);
+        return e < 0 ? null : JSON.parse(xmp.substring(d, e));
+    } catch (ex) { return null; }
+}
+
+function writePresets(data) {
+    try {
+        var tag = XMP_MARKER + JSON.stringify(data) + "-->";
+        var xmp = app.project.xmpPacket || "";
+        var s = xmp.indexOf(XMP_MARKER);
+        if (s >= 0) {
+            var e = xmp.indexOf("-->", s);
+            xmp = xmp.substring(0, s) + tag + (e >= 0 ? xmp.substring(e + 3) : "");
+        } else {
+            var pe = xmp.indexOf('<?xpacket end');
+            xmp = pe >= 0 ? xmp.substring(0, pe) + tag + "\n" + xmp.substring(pe) : xmp + "\n" + tag;
+        }
+        app.project.xmpPacket = xmp;
+    } catch (ex) { /* XMP写入非关键，内存缓存保证功能 */ }
+}
+
+// 内存缓存，避免依赖 XMP 读取
+var presetsCache = readPresets() || {};
+
+function saveSlot(idx) {
+    var params = {
+        d: entryDur.text, b: entryBlur.text, o: entryOffset.text,
+        es: exitStart.text, ed: exitDur.text, eo: exitOffset.text,
+        a: heightAmp.text, f: heightFreq.text, sp: speed.text
+    };
+    presetsCache[String(idx)] = params;
+    writePresets(presetsCache);
+    updateLoadButtons();
+    setStatus("已保存到预设 " + idx);
+}
+
+function loadSlot(idx) {
+    if (!presetsCache || !presetsCache[String(idx)]) {
+        setStatus("预设 " + idx + " 没有数据");
+        return;
+    }
+    var p = presetsCache[String(idx)];
+    entryDur.text = p.d || "2.0";
+    entryBlur.text = p.b || "40";
+    entryOffset.text = p.o || "80";
+    exitStart.text = p.es || "3.5";
+    exitDur.text = p.ed || "2.0";
+    exitOffset.text = p.eo || "80";
+    heightAmp.text = p.a || "30";
+    heightFreq.text = p.f || "0.7";
+    speed.text = p.sp || "1.0";
+    setStatus("已加载预设 " + idx);
+}
+
+function clearAllPresets() {
+    presetsCache = {};
+    writePresets(presetsCache);
+    updateLoadButtons();
+    setStatus("已清除所有预设");
+}
+
+function updateLoadButtons() {
+    for (var pi = 1; pi <= 4; pi++) {
+        if (loadBtns && loadBtns[pi - 1]) {
+            loadBtns[pi - 1].enabled = (presetsCache && presetsCache[String(pi)]) ? true : false;
+        }
+    }
+}
+
 // ---- 应用动画 ----
 function applyAnimation() {
     try {
@@ -222,6 +362,9 @@ function applyAnimation() {
         if (!layer || !(layer instanceof TextLayer)) {
             setStatus("错误: 请选中一个文本图层"); return;
         }
+
+        // ---- 获取播放头位置作为动画起始时间 ----
+        var startTime = comp.time;
 
         // ---- 查找文字动画器组（兼容不同AE版本） ----
         // AE 2026 中文版中，Text Animators 位于 Text Properties 内部
@@ -284,9 +427,9 @@ function applyAnimation() {
         }
         entryEndProp.setValue(100);
 
-        var k1 = entryStartProp.addKey(0);
+        var k1 = entryStartProp.addKey(startTime);
         entryStartProp.setValueAtKey(k1, 0);
-        var k2 = entryStartProp.addKey(pEntryDur / pSpeed);
+        var k2 = entryStartProp.addKey(startTime + (pEntryDur / pSpeed));
         entryStartProp.setValueAtKey(k2, 100);
 
         var entryProps = entryAnim.property("ADBE Text Properties");
@@ -360,9 +503,9 @@ function applyAnimation() {
         }
         exitEndProp.setValue(100);
 
-        var k3 = exitStartProp.addKey(exitStartTime);
+        var k3 = exitStartProp.addKey(startTime + exitStartTime);
         exitStartProp.setValueAtKey(k3, 100);
-        var k4 = exitStartProp.addKey(exitEndTime);
+        var k4 = exitStartProp.addKey(startTime + exitEndTime);
         exitStartProp.setValueAtKey(k4, 0);
 
         var exitProps = exitAnim.property("ADBE Text Properties");
@@ -417,22 +560,35 @@ function applyAnimation() {
             }
             if (!hProps) continue;
 
-            // 添加 Selector，仅影响当前字符（Percent 模式）
+            // 添加 Selector，仅影响当前字符（Index 模式 + keyframe）
             var hSel = hAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
-            var hPStart = hSel.property("ADBE Text Percent Start");
-            if (!hPStart) hPStart = hSel.property("ADBE Text Start");
-            if (!hPStart) hPStart = hSel.property("Start");
-            if (!hPStart && hSel.numProperties >= 1) hPStart = hSel.property(1);
-            var hPEnd = hSel.property("ADBE Text Percent End");
-            if (!hPEnd) hPEnd = hSel.property("ADBE Text End");
-            if (!hPEnd) hPEnd = hSel.property("End");
-            if (!hPEnd && hSel.numProperties >= 2) hPEnd = hSel.property(2);
-            if (hPStart && hPEnd) {
-                // 按百分比划分单个字符的范围
-                var pStart = ((ci - 1) / textLen) * 100;
-                var pEnd = (ci / textLen) * 100;
-                hPStart.setValue(pStart);
-                hPEnd.setValue(pEnd);
+            // 用 keyframe 绕过隐藏属性的限制
+            var hIdxStart = hSel.property("ADBE Text Index Start");
+            if (!hIdxStart) hIdxStart = hSel.property("ADBE Text Start");
+            if (!hIdxStart) hIdxStart = hSel.property(4);
+            var hIdxEnd = hSel.property("ADBE Text Index End");
+            if (!hIdxEnd) hIdxEnd = hSel.property("ADBE Text End");
+            if (!hIdxEnd) hIdxEnd = hSel.property(5);
+            if (hIdxStart && hIdxEnd) {
+                try {
+                    // 先尝试直接 setValue
+                    hIdxStart.setValue(ci);
+                    hIdxEnd.setValue(ci);
+                } catch (eIdx) {
+                    // 隐藏属性用 addKey + setValueAtKey
+                    try {
+                        var sk1 = hIdxStart.addKey(startTime);
+                        hIdxStart.setValueAtKey(sk1, ci);
+                        var ek1 = hIdxEnd.addKey(startTime);
+                        hIdxEnd.setValueAtKey(ek1, ci);
+                    } catch (eIdx2) {
+                        // 最终回退：表达式
+                        try {
+                            hIdxStart.expression = String(ci);
+                            hIdxEnd.expression = String(ci);
+                        } catch (eIdx3) {}
+                    }
+                }
             }
 
             // 添加 Position + 表达式（ci 做相位偏移）
@@ -475,3 +631,5 @@ pal.layout.layout(true);
 if (pal instanceof Panel) {
     try { pal.layout.resize(); } catch (e) {}
 }
+// 加载已有预设状态
+try { updateLoadButtons(); } catch (e) {}
