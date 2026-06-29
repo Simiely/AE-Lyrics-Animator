@@ -741,6 +741,7 @@ function applyAnimation() {
             }
 
             // 随机模糊：基于 blurSeed 决定该字符是否模糊
+            // 注意：AE 2026 Blur 属性可能是 2D 类型，表达式需返回 [x, y]
             if (pBlurProb > 0) {
                 var sBlur = addAnimProperty(sProps, "ADBE Text Blur");
                 if (sBlur) {
@@ -750,8 +751,9 @@ function applyAnimation() {
                     blurExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
                     blurExpr += "if (r < " + pBlurProb + ") {\n";
                     blurExpr += "    seedRandom(" + pBlurSeed + " + " + ci + " + 5555, true);\n";
-                    blurExpr += "    random(" + pBlurMin + ", " + pBlurMax + ") * fade;\n";
-                    blurExpr += "} else { 0; }";
+                    blurExpr += "    v = random(" + pBlurMin + ", " + pBlurMax + ") * fade;\n";
+                    blurExpr += "} else { v = 0; }\n";
+                    blurExpr += "[v, v]";
                     sBlur.expressionEnabled = true;
                     sBlur.expression = blurExpr;
                 }
