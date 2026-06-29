@@ -18,7 +18,6 @@ pal.alignChildren = ["left", "top"];
 pal.spacing = 4;
 pal.margins = [8, 8, 8, 8];
 pal.preferredSize.width = 280;
-pal.maximumSize.width = 280;
 pal.minimumSize = [280, 560];
 
 // 标题
@@ -969,5 +968,6 @@ if (pal instanceof Window) {
 pal.layout.layout(true);
 if (pal instanceof Panel) {
     try { pal.layout.resize(); } catch (e) {}
+    try { pal.size = [280, pal.size.height]; } catch (e) {}
 }
 try { updateLoadButtons(); } catch (e) {}
