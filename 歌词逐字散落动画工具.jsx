@@ -3,7 +3,7 @@
 // ============================================================
 // 功能：选中文本图层后，自动生成逐字动画
 // - 从左侧模糊进入 → 清晰 → 右侧模糊消失
-// - 文字随机散布开来，大小不一（逐字独立动画器 + Percent Range Selector）
+// - 高度错落（波浪浮动）+ 散落分布（随机位置、随机大小）
 // - 种子参数控制随机分布位置，可复现
 // - 所有参数可调
 // - 预设存储/加载（XMP 工程持久化）
@@ -69,6 +69,26 @@ var exitDur = g5.add("edittext", undefined, "2.0"); exitDur.characters = 6; exit
 var g6 = exitGrp.add("group"); g6.orientation = "row"; g6.alignChildren = "left";
 g6.add("statictext", undefined, "出场偏移 (像素)").preferredSize.width = 110;
 var exitOffset = g6.add("edittext", undefined, "80"); exitOffset.characters = 6; exitOffset.alignment = "fill";
+
+// ---------- 高度错落参数 ----------
+var heightGrp = tabGrp.add("panel");
+heightGrp.text = "  高度错落（波浪浮动）";
+heightGrp.orientation = "column";
+heightGrp.alignChildren = "right";
+heightGrp.spacing = 4;
+heightGrp.margins = [10, 18, 10, 10];
+
+var g7 = heightGrp.add("group"); g7.orientation = "row"; g7.alignChildren = "left";
+g7.add("statictext", undefined, "波动幅度 (像素)").preferredSize.width = 110;
+var heightAmp = g7.add("edittext", undefined, "30"); heightAmp.characters = 6; heightAmp.alignment = "fill";
+
+var g8 = heightGrp.add("group"); g8.orientation = "row"; g8.alignChildren = "left";
+g8.add("statictext", undefined, "波动频率").preferredSize.width = 110;
+var heightFreq = g8.add("edittext", undefined, "0.7"); heightFreq.characters = 6; heightFreq.alignment = "fill";
+
+var g9 = heightGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "left";
+g9.add("statictext", undefined, "流动速度").preferredSize.width = 110;
+var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 6; speed.alignment = "fill";
 
 // ---------- 散落分布参数 ----------
 var scatterGrp = tabGrp.add("panel");
@@ -303,6 +323,7 @@ function saveSlot(idx) {
     var params = {
         d: entryDur.text, b: entryBlur.text, o: entryOffset.text,
         es: exitStart.text, ed: exitDur.text, eo: exitOffset.text,
+        a: heightAmp.text, f: heightFreq.text, sp: speed.text,
         r: scatterRange.text, sd: seed.text,
         mn: minScale.text, mx: maxScale.text
     };
@@ -324,6 +345,9 @@ function loadSlot(idx) {
     exitStart.text = p.es || "3.5";
     exitDur.text = p.ed || "2.0";
     exitOffset.text = p.eo || "80";
+    heightAmp.text = p.a || "30";
+    heightFreq.text = p.f || "0.7";
+    speed.text = p.sp || "1.0";
     scatterRange.text = p.r || "150";
     seed.text = p.sd || "1";
     minScale.text = p.mn || "50";
@@ -338,6 +362,9 @@ function resetParams() {
     exitStart.text = "3.5";
     exitDur.text = "2.0";
     exitOffset.text = "80";
+    heightAmp.text = "30";
+    heightFreq.text = "0.7";
+    speed.text = "1.0";
     scatterRange.text = "150";
     seed.text = "1";
     minScale.text = "50";
@@ -372,6 +399,9 @@ function applyAnimation() {
         var pExitStart   = Math.max(0, getVal(exitStart, 3.5));
         var pExitDur     = Math.max(0.1, getVal(exitDur, 2.0));
         var pExitOff     = getVal(exitOffset, 80);
+        var pHeightAmp   = Math.max(0, getVal(heightAmp, 30));
+        var pHeightFreq  = Math.max(0.01, getVal(heightFreq, 0.7));
+        var pSpeed       = Math.max(0.01, getVal(speed, 1.0));
         var pScatterRange = Math.max(0, getVal(scatterRange, 150));
         var pSeed        = Math.max(0, getVal(seed, 1));
         var pMinScale    = Math.max(1, getVal(minScale, 50));
@@ -453,7 +483,7 @@ function applyAnimation() {
 
         var k1 = entryStartProp.addKey(startTime);
         entryStartProp.setValueAtKey(k1, 0);
-        var k2 = entryStartProp.addKey(startTime + pEntryDur);
+        var k2 = entryStartProp.addKey(startTime + pEntryDur / pSpeed);
         entryStartProp.setValueAtKey(k2, 100);
 
         var entryProps = entryAnim.property("ADBE Text Properties");
@@ -507,7 +537,7 @@ function applyAnimation() {
         // Animator 2: 出场
         // ============================================================
         var exitStartTime = pExitStart;
-        var exitEndTime   = exitStartTime + pExitDur;
+        var exitEndTime   = exitStartTime + pExitDur / pSpeed;
 
         var exitAnim = animatorsGroup.addProperty("ADBE Text Animator");
         exitAnim.name = "歌词_出场";
@@ -626,12 +656,57 @@ function applyAnimation() {
         }
 
         // ============================================================
+        // Animator 4: 高度错落（波浪浮动，逐字 Position 表达式）
+        // ============================================================
+        for (var ci = 1; ci <= textLen; ci++) {
+            var hAnim = animatorsGroup.addProperty("ADBE Text Animator");
+            hAnim.name = "歌词_高度_" + ci;
+
+            var hProps = hAnim.property("ADBE Text Properties");
+            if (!hProps) {
+                for (var si = 1; si <= hAnim.numProperties; si++) {
+                    var sp = hAnim.property(si);
+                    if (sp.matchName && sp.matchName.indexOf("ADBE") >= 0 && sp.matchName.indexOf("Property") >= 0 && sp.matchName.indexOf("Select") < 0) {
+                        hProps = sp; break;
+                    }
+                }
+                if (!hProps) hProps = hAnim.property(hAnim.numProperties);
+            }
+            if (!hProps) continue;
+
+            var hSel = hAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+            var hPStart = hSel.property("ADBE Text Percent Start");
+            if (!hPStart) hPStart = hSel.property("ADBE Text Start");
+            if (!hPStart) hPStart = hSel.property("Start");
+            if (!hPStart && hSel.numProperties >= 1) hPStart = hSel.property(1);
+            var hPEnd = hSel.property("ADBE Text Percent End");
+            if (!hPEnd) hPEnd = hSel.property("ADBE Text End");
+            if (!hPEnd) hPEnd = hSel.property("End");
+            if (!hPEnd && hSel.numProperties >= 2) hPEnd = hSel.property(2);
+            if (hPStart && hPEnd) {
+                var pStart = ((ci - 1) / textLen) * 100;
+                var pEnd = (ci / textLen) * 100;
+                hPStart.setValue(pStart);
+                hPEnd.setValue(pEnd);
+            }
+
+            var hPos = addAnimProperty(hProps, "ADBE Text Position");
+            if (hPos) {
+                var hExpr = "amp = " + pHeightAmp + ";\n";
+                hExpr += "freq = " + pHeightFreq + ";\n";
+                hExpr += "[0, Math.sin(time * freq * 2 + " + ci + " * 0.8) * amp]";
+                hPos.expressionEnabled = true;
+                hPos.expression = hExpr;
+            }
+        }
+
+        // ============================================================
         // 完成
         // ============================================================
-        setStatus("完成! 入场" + pEntryDur.toFixed(1) +
+        setStatus("完成! 入场" + (pEntryDur / pSpeed).toFixed(1) +
             "s 出场" + exitStartTime.toFixed(1) + "-" + exitEndTime.toFixed(1) +
             "s 散落" + textLen + "字符 种子=" + pSeed);
-        $.writeln("歌词散落动画已应用成功");
+        $.writeln("歌词散落动画v2.0已应用成功: " + textLen + "字符 种子=" + pSeed);
 
     } catch (err) {
         var errLine = err.line || err.lineNumber || "?";
