@@ -106,7 +106,7 @@ if (pType === 6413) { // ThreeD
 1. Range Selector 的 Index Start/End 在 AE 2026 中是隐藏属性（3D 类型），`setValue()` 失败
 2. 解决方案：先用 `addKey(startTime)` + `setValueAtKey()` 绕过隐藏限制
 3. 再回退到 `expression = String(ci)` 用表达式返回常量值
-4. Percent 模式精度不足以隔离单个字符，Index 模式是精确方案
+4. ⚠️ **实测发现 Index 模式的问题**：Selector 默认 Units 为 Percent，仅设置 Index Start/End 而不切换 Units 会导致设置被忽略。Percent 模式可以精确隔离单个字符，无需改用 Index。
 
 ### 9. 动画起始时间偏移
 
@@ -148,6 +148,29 @@ entryStartProp.setValueAtKey(k2, 100);
 
 这种设计确保即使 XMP 写入失败（如无工程文件时），面板内功能依然正常。
 
+### 11. v1.1 修复：波浪效果失效（Index → Percent 回退）
+
+**问题：** v1.0 将高度错落的 Selector 从 Percent 模式改为 Index 模式后，波浪效果完全失效。
+
+**根因分析：** 有两个问题叠加导致失效：
+
+1. **Units 未切换** — Selector 默认 Units 为 `Percent`，在此模式下 `Index Start/End` 属性被忽略，所有动画器均作用于全部字符
+2. **属性访问脆弱** — 通过硬编码索引（`property(4)` / `property(5)`）访问 Index Start/End，在不同 AE 版本中属性顺序可能不同
+
+**解决方案：** 回退到 Percent 模式：
+
+```javascript
+// 按字符数等分百分比范围，精确锁定单个字符
+var pStart = ((ci - 1) / textLen) * 100;
+var pEnd   = (ci / textLen) * 100;
+hPStart.setValue(pStart);
+hPEnd.setValue(pEnd);
+```
+
+**验证：** 对于 N 个字符的文本，每个字符获得 `100/N` 的百分比区间，AE 内部按字符均匀分配，不存在精度不足的问题。
+
+**经验教训：** Index 模式需要额外设置 Selector 的 Units 属性（matchName 为 `ADBE Text Selector Units`），且在不同 AE 版本中兼容性更差。Percent 模式在所有版本中稳定可靠。
+
 ## 架构设计
 
 脚本采用单文件结构：
@@ -169,7 +192,7 @@ entryStartProp.setValueAtKey(k2, 100);
        ├── 查找 Text Animators 组（AE 2026 备选路径）
        ├── 创建 入场 动画器（Opacity + Blur + Position）
        ├── 创建 出场 动画器（Opacity + Blur + Position）
-       └── 创建 N 个 高度错落 动画器（逐字 Index 锁定 + Position 表达式）
+       └── 创建 N 个 高度错落 动画器（逐字 Percent 锁定 + Position 表达式）
 ```
 
 ## 兼容性

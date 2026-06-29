@@ -1,14 +1,15 @@
 // ============================================================
-// 歌词逐字动画工具  v1.0  —  for After Effects 2026
+// 歌词逐字动画工具  v1.1  —  for After Effects 2026
 // ============================================================
 // 功能：选中文本图层后，自动生成逐字动画
 // - 从左侧模糊进入 → 清晰 → 右侧模糊消失
-// - 高低位置错落（表达式控制）
+// - 高低位置错落（逐字独立动画器 + Percent Range Selector）
 // - 所有参数可调
+// - 预设存储/加载（XMP 工程持久化）
 // ============================================================
 
 // ---- 构建面板 ----
-var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字动画工具 v1.0", undefined);
+var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字动画工具 v1.1", undefined);
 pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 6;
