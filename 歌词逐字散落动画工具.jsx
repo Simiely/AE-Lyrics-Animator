@@ -38,6 +38,7 @@ tabGrp.spacing = 4;
 // ======================================================================
 var entryGrp = tabGrp.add("panel");
 entryGrp.text = "  入场参数";
+entryGrp.preferredSize.width = 270;
 entryGrp.orientation = "column";
 entryGrp.alignChildren = "left";
 entryGrp.spacing = 3;
@@ -77,6 +78,7 @@ entryMode.preferredSize.width = 100;
 // ======================================================================
 var exitGrp = tabGrp.add("panel");
 exitGrp.text = "  出场参数";
+exitGrp.preferredSize.width = 270;
 exitGrp.orientation = "column";
 exitGrp.alignChildren = "left";
 exitGrp.spacing = 3;
@@ -111,6 +113,7 @@ exitMode.preferredSize.width = 100;
 // ======================================================================
 var heightGrp = tabGrp.add("panel");
 heightGrp.text = "  高度错落（波浪浮动）";
+heightGrp.preferredSize.width = 270;
 heightGrp.orientation = "column";
 heightGrp.alignChildren = "left";
 heightGrp.spacing = 3;
@@ -138,6 +141,7 @@ var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 5; speed.pr
 // ======================================================================
 var scatterGrp = tabGrp.add("panel");
 scatterGrp.text = "  散落分布（随机位置 / 大小 / 模糊）";
+scatterGrp.preferredSize.width = 270;
 scatterGrp.orientation = "column";
 scatterGrp.alignChildren = "left";
 scatterGrp.spacing = 3;
@@ -194,6 +198,7 @@ var blurMax = gS10.add("edittext", undefined, "25"); blurMax.characters = 5; blu
 // ======================================================================
 var presetGrp = pal.add("panel");
 presetGrp.text = "  预设管理";
+presetGrp.preferredSize.width = 270;
 presetGrp.orientation = "column";
 presetGrp.alignChildren = "left";
 presetGrp.spacing = 3;
