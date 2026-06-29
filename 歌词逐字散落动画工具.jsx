@@ -14,9 +14,10 @@
 // ---- 构建面板 ----
 var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.2", undefined);
 pal.orientation = "column";
-pal.alignChildren = "fill";
+pal.alignChildren = ["left", "top"];
 pal.spacing = 4;
 pal.margins = [8, 8, 8, 8];
+pal.preferredSize.width = 280;
 pal.minimumSize = [280, 560];
 
 // 标题
