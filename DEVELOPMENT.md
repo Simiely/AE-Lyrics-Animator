@@ -192,11 +192,11 @@ r = pScatterRange;
 
 ```javascript
 seedRandom(pSeed + ci + 9999, true);
-minS = pMinScale / 100;
-maxS = pMaxScale / 100;
-s = random(minS, maxS);
+s = random(pMinScale, pMaxScale);  // 直接传百分比，如 50~200 表示 50%~200%
 [s, s]
 ```
+
+> ⚠️ **踩坑记录：** 初始版本错误地写了 `random(pMinScale / 100, pMaxScale / 100)`，返回 `[0.5, 0.5]`。但 **AE 的 Scale 属性值本身就是百分比**，`[0.5, 0.5]` 被理解为 0.5%，导致字符极小。修复后直接传入原始百分比值。
 
 使用 `+ 9999` 作为种子偏移，使大小随机分布**独立于**位置随机分布。
 
@@ -239,6 +239,7 @@ s = random(minS, maxS);
   ├── UI 构建（ScriptUI Panel）
   │    ├── 入场参数（持续时间 / 模糊 / 偏移）
   │    ├── 出场参数（开始时间 / 持续时间 / 偏移）
+  │    ├── 高度错落（幅度 / 频率 / 速度）
   │    ├── 散落分布（散布范围 / 种子 / 最小缩放 / 最大缩放）
   │    ├── 预设管理（存储 1-4 / 使用 1-4 / 清除全部）
   │    └── 应用 / 清除按钮 + 状态栏
@@ -251,8 +252,8 @@ s = random(minS, maxS);
        ├── 查找 Text Animators 组（AE 2026 备选路径）
        ├── 创建 入场 动画器（Opacity + Blur + Position）
        ├── 创建 出场 动画器（Opacity + Blur + Position）
-       └── 创建 N 个 散落 动画器（逐字 Percent 锁定 + Position 表达式 + Scale 表达式）
-```
+       ├── 创建 N 个 散落 动画器（Position + Scale 随机表达式）
+       └── 创建 N 个 高度 动画器（Position Y 正弦表达式）
 ```
 
 ## 兼容性
