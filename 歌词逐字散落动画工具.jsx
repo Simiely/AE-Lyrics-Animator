@@ -1,29 +1,29 @@
 // ============================================================
-// 歌词逐字散落动画工具  v3.0  —  for After Effects 2026
+// 歌词逐字散落动画工具  v3.1  —  for After Effects 2026
 // ============================================================
 // 功能：选中文本图层后，自动生成逐字动画
-// - 入场方向可选（左/右/上/下）模糊进入 → 清晰
-// - 出场方向与入场对称，文字渐隐消失并变模糊
+// - 入场方向可选（左/右/上/下），逐字/一起模式
+// - 出场方向与入场对称，逐字/一起模式
 // - 高度错落（波浪浮动）+ 散落分布（随机位置、随机大小、可控时间）
 // - 随机模糊效果（部分字符模糊、部分清晰，基于种子可复现）
-// - 种子参数控制随机分布位置，可复现
+// - 每个功能面板有独立总开关，可单独启用/关闭
 // - 所有参数可调
 // - 预设存储/加载（XMP 工程持久化）
 // ============================================================
 
 // ---- 构建面板 ----
-var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.0", undefined);
+var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.1", undefined);
 pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 6;
 pal.margins = [12, 10, 12, 10];
-pal.minimumSize = [300, 520];
+pal.minimumSize = [300, 560];
 
 // 标题
 var titleGrp = pal.add("group");
 titleGrp.orientation = "row";
 titleGrp.alignment = "center";
-var titleText = titleGrp.add("statictext", undefined, "歌词逐字散落动画工具 v3.0");
+var titleText = titleGrp.add("statictext", undefined, "歌词逐字散落动画工具 v3.1");
 
 // ---- 参数分类 ----
 var tabGrp = pal.add("group");
@@ -31,13 +31,20 @@ tabGrp.orientation = "column";
 tabGrp.alignChildren = "fill";
 tabGrp.spacing = 4;
 
-// ---------- 入场参数 ----------
+// ======================================================================
+// 入场参数
+// ======================================================================
 var entryGrp = tabGrp.add("panel");
-entryGrp.text = "  入场参数（左侧模糊 → 清晰）";
+entryGrp.text = "  入场参数";
 entryGrp.orientation = "column";
 entryGrp.alignChildren = "right";
 entryGrp.spacing = 4;
 entryGrp.margins = [10, 18, 10, 10];
+
+// 入场总开关
+var gEntryEnable = entryGrp.add("group"); gEntryEnable.orientation = "row"; gEntryEnable.alignChildren = "left";
+var entryEnable = gEntryEnable.add("checkbox", undefined, "  启用入场动画");
+entryEnable.value = true;
 
 var g1 = entryGrp.add("group"); g1.orientation = "row"; g1.alignChildren = "left";
 g1.add("statictext", undefined, "持续时间 (秒)").preferredSize.width = 100;
@@ -51,20 +58,33 @@ var g3 = entryGrp.add("group"); g3.orientation = "row"; g3.alignChildren = "left
 g3.add("statictext", undefined, "入场偏移 (像素)").preferredSize.width = 100;
 var entryOffset = g3.add("edittext", undefined, "80"); entryOffset.characters = 6; entryOffset.alignment = "fill";
 
-// 方向选择
 var gDir = entryGrp.add("group"); gDir.orientation = "row"; gDir.alignChildren = "left";
 gDir.add("statictext", undefined, "入场方向").preferredSize.width = 100;
 var entryDirection = gDir.add("dropdownlist", undefined, ["从左到右", "从右到左", "从上到下", "从下到上"]);
 entryDirection.selection = 0;
 entryDirection.preferredSize.width = 90;
 
-// ---------- 出场参数 ----------
+// 入场模式：逐字 / 一起
+var gEntryMode = entryGrp.add("group"); gEntryMode.orientation = "row"; gEntryMode.alignChildren = "left";
+gEntryMode.add("statictext", undefined, "入场模式").preferredSize.width = 100;
+var entryMode = gEntryMode.add("dropdownlist", undefined, ["逐字出现", "一起出现"]);
+entryMode.selection = 0;
+entryMode.preferredSize.width = 90;
+
+// ======================================================================
+// 出场参数
+// ======================================================================
 var exitGrp = tabGrp.add("panel");
-exitGrp.text = "  出场参数（清晰 → 右侧模糊消失）";
+exitGrp.text = "  出场参数";
 exitGrp.orientation = "column";
 exitGrp.alignChildren = "right";
 exitGrp.spacing = 4;
 exitGrp.margins = [10, 18, 10, 10];
+
+// 出场总开关
+var gExitEnable = exitGrp.add("group"); gExitEnable.orientation = "row"; gExitEnable.alignChildren = "left";
+var exitEnable = gExitEnable.add("checkbox", undefined, "  启用出场动画");
+exitEnable.value = true;
 
 var g4 = exitGrp.add("group"); g4.orientation = "row"; g4.alignChildren = "left";
 g4.add("statictext", undefined, "出场开始 (秒)").preferredSize.width = 100;
@@ -79,13 +99,27 @@ var g6 = exitGrp.add("group"); g6.orientation = "row"; g6.alignChildren = "left"
 g6.add("statictext", undefined, "出场偏移 (像素)").preferredSize.width = 100;
 var exitOffset = g6.add("edittext", undefined, "80"); exitOffset.characters = 6; exitOffset.alignment = "fill";
 
-// ---------- 高度错落参数 ----------
+// 出场模式：逐字 / 一起
+var gExitMode = exitGrp.add("group"); gExitMode.orientation = "row"; gExitMode.alignChildren = "left";
+gExitMode.add("statictext", undefined, "出场模式").preferredSize.width = 100;
+var exitMode = gExitMode.add("dropdownlist", undefined, ["逐字消失", "一起消失"]);
+exitMode.selection = 0;
+exitMode.preferredSize.width = 90;
+
+// ======================================================================
+// 高度错落参数
+// ======================================================================
 var heightGrp = tabGrp.add("panel");
 heightGrp.text = "  高度错落（波浪浮动）";
 heightGrp.orientation = "column";
 heightGrp.alignChildren = "right";
 heightGrp.spacing = 4;
 heightGrp.margins = [10, 18, 10, 10];
+
+// 高度错落总开关
+var gHeightEnable = heightGrp.add("group"); gHeightEnable.orientation = "row"; gHeightEnable.alignChildren = "left";
+var heightEnable = gHeightEnable.add("checkbox", undefined, "  启用高度错落");
+heightEnable.value = true;
 
 var g7 = heightGrp.add("group"); g7.orientation = "row"; g7.alignChildren = "left";
 g7.add("statictext", undefined, "波动幅度 (像素)").preferredSize.width = 100;
@@ -99,13 +133,20 @@ var g9 = heightGrp.add("group"); g9.orientation = "row"; g9.alignChildren = "lef
 g9.add("statictext", undefined, "流动速度").preferredSize.width = 100;
 var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 6; speed.alignment = "fill";
 
-// ---------- 散落分布参数 ----------
+// ======================================================================
+// 散落分布参数
+// ======================================================================
 var scatterGrp = tabGrp.add("panel");
 scatterGrp.text = "  散落分布（随机位置 / 大小 / 模糊）";
 scatterGrp.orientation = "column";
 scatterGrp.alignChildren = "right";
 scatterGrp.spacing = 4;
 scatterGrp.margins = [10, 18, 10, 10];
+
+// 散落分布总开关
+var gScatterEnable = scatterGrp.add("group"); gScatterEnable.orientation = "row"; gScatterEnable.alignChildren = "left";
+var scatterEnable = gScatterEnable.add("checkbox", undefined, "  启用散落分布");
+scatterEnable.value = true;
 
 var gS1 = scatterGrp.add("group"); gS1.orientation = "row"; gS1.alignChildren = "left";
 gS1.add("statictext", undefined, "散布范围 (像素)").preferredSize.width = 100;
@@ -132,7 +173,6 @@ var gS6 = scatterGrp.add("group"); gS6.orientation = "row"; gS6.alignChildren = 
 gS6.add("statictext", undefined, "最大缩放 (%)").preferredSize.width = 100;
 var maxScale = gS6.add("edittext", undefined, "200"); maxScale.characters = 6; maxScale.alignment = "fill";
 
-// 随机模糊参数
 var gS7 = scatterGrp.add("group"); gS7.orientation = "row"; gS7.alignChildren = "left";
 gS7.add("statictext", undefined, "模糊随机种子").preferredSize.width = 100;
 var blurSeed = gS7.add("edittext", undefined, "10"); blurSeed.characters = 6; blurSeed.alignment = "fill";
@@ -149,7 +189,9 @@ var gS10 = scatterGrp.add("group"); gS10.orientation = "row"; gS10.alignChildren
 gS10.add("statictext", undefined, "最大模糊值").preferredSize.width = 100;
 var blurMax = gS10.add("edittext", undefined, "25"); blurMax.characters = 6; blurMax.alignment = "fill";
 
-// ---------- 预设管理 ----------
+// ======================================================================
+// 预设管理
+// ======================================================================
 var presetGrp = pal.add("panel");
 presetGrp.text = "  预设管理";
 presetGrp.orientation = "column";
@@ -157,7 +199,6 @@ presetGrp.alignChildren = "fill";
 presetGrp.spacing = 4;
 presetGrp.margins = [10, 18, 10, 8];
 
-// 存储预设行
 var saveRow = presetGrp.add("group");
 saveRow.orientation = "row";
 saveRow.alignChildren = "center";
@@ -173,7 +214,6 @@ for (var px = 1; px <= 4; px++) {
 var clearPresetBtn = saveRow.add("button", undefined, "清除全部");
 clearPresetBtn.size = {width: 60, height: 22};
 
-// 使用预设行 + 复位按钮
 var loadRow = presetGrp.add("group");
 loadRow.orientation = "row";
 loadRow.alignChildren = "center";
@@ -190,13 +230,11 @@ for (var px = 1; px <= 4; px++) {
 var resetBtn = loadRow.add("button", undefined, "复位");
 resetBtn.size = {width: 55, height: 22};
 
-// 绑定存储按钮
 for (var px = 1; px <= 4; px++) {
     saveBtns[px - 1].onClick = (function(idx) {
         return function() { saveSlot(idx); };
     })(px);
 }
-// 绑定使用按钮
 for (var px = 1; px <= 4; px++) {
     loadBtns[px - 1].onClick = (function(idx) {
         return function() { loadSlot(idx); };
@@ -205,7 +243,9 @@ for (var px = 1; px <= 4; px++) {
 clearPresetBtn.onClick = function() { clearAllPresets(); };
 resetBtn.onClick = function() { resetParams(); };
 
-// ---------- 按钮 ----------
+// ======================================================================
+// 按钮
+// ======================================================================
 var btnGrp = pal.add("group");
 btnGrp.orientation = "row";
 btnGrp.alignment = "center";
@@ -220,13 +260,11 @@ var clearBtn = btnGrp.add("button", undefined, "清除动画");
 clearBtn.preferredSize.width = 130;
 clearBtn.preferredSize.height = 28;
 
-// 状态栏
 var statusBar = pal.add("statictext", undefined, "就绪 - 选中一个文本图层后点击应用");
 statusBar.alignment = "left";
 statusBar.margins = [0, 4, 0, 0];
 
-// 提示
-var tipBar = pal.add("statictext", undefined, "提示：散落开始时间应 ≥ 入场持续时间，避免效果重叠");
+var tipBar = pal.add("statictext", undefined, "提示：各面板可通过复选框独立开关；散落开始时间应 ≥ 入场持续时间");
 tipBar.alignment = "left";
 tipBar.margins = [0, 0, 0, 0];
 
@@ -256,7 +294,6 @@ function clearAnimators() {
         return;
     }
 
-    // 查找文字动画器组（兼容AE 2026中文版）
     var animatorsGroup = layer.property("ADBE Text Animators");
     if (!animatorsGroup) {
         var textProps = layer.property("ADBE Text Properties");
@@ -272,7 +309,6 @@ function clearAnimators() {
     }
     if (!animatorsGroup) { setStatus("该图层没有文字动画器", true); return; }
 
-    // 删除以 "歌词_" 开头的动画器
     var removed = 0;
     for (var i = animatorsGroup.numProperties; i >= 1; i--) {
         var anim = animatorsGroup.property(i);
@@ -289,16 +325,14 @@ function clearAnimators() {
     }
 }
 
-// ---- 安全添加属性（兼容 matchName 差异） ----
+// ---- 安全添加属性 ----
 function addAnimProperty(propsGroup, propType) {
-    // 候选名列表
     var candidates = [propType];
     if (propType === "ADBE Text Blur") candidates = ["ADBE Text Blur", "ADBE Text Blur 2D", "ADBE Text Blur 3D", "Blur", "模糊"];
     else if (propType === "ADBE Text Position") candidates = ["ADBE Text Position", "ADBE Text Position 2D", "ADBE Text Position 3D", "Position", "位置"];
     else if (propType === "ADBE Text Opacity") candidates = ["ADBE Text Opacity", "ADBE Text Opacity Percent", "Opacity", "不透明度"];
     else if (propType === "ADBE Text Scale") candidates = ["ADBE Text Scale", "ADBE Text Scale 3D", "Scale", "缩放"];
 
-    // 优先用 addProperty 创建新属性（避免预置属性的隐藏问题）
     if (propsGroup.addProperty) {
         for (var ci = 0; ci < candidates.length; ci++) {
             try {
@@ -308,7 +342,6 @@ function addAnimProperty(propsGroup, propType) {
         }
     }
 
-    // 回退：用 property 访问预置属性
     for (var ci = 0; ci < candidates.length; ci++) {
         try {
             var result = propsGroup.property(candidates[ci]);
@@ -320,7 +353,7 @@ function addAnimProperty(propsGroup, propType) {
     return null;
 }
 
-// ---- XMP 存储（随工程文件保存预设） ----
+// ---- XMP 存储 ----
 var XMP_MARKER = "<!--AE_Lyrics_Presets:";
 
 function readPresets() {
@@ -348,21 +381,27 @@ function writePresets(data) {
             xmp = pe >= 0 ? xmp.substring(0, pe) + tag + "\n" + xmp.substring(pe) : xmp + "\n" + tag;
         }
         app.project.xmpPacket = xmp;
-    } catch (ex) { /* XMP写入非关键，内存缓存保证功能 */ }
+    } catch (ex) { /* XMP写入非关键 */ }
 }
 
-// 内存缓存，避免依赖 XMP 读取
 var presetsCache = readPresets() || {};
 
 function saveSlot(idx) {
     var params = {
-        d: entryDur.text, b: entryBlur.text, o: entryOffset.text, dir: entryDirection.selection ? entryDirection.selection.index : 0,
+        d: entryDur.text, b: entryBlur.text, o: entryOffset.text,
+        dir: entryDirection.selection ? entryDirection.selection.index : 0,
+        emode: entryMode.selection ? entryMode.selection.index : 0,
+        enbl: entryEnable.value,
         es: exitStart.text, ed: exitDur.text, eo: exitOffset.text,
+        xmode: exitMode.selection ? exitMode.selection.index : 0,
+        xenbl: exitEnable.value,
         a: heightAmp.text, f: heightFreq.text, sp: speed.text,
+        henbl: heightEnable.value,
         r: scatterRange.text, sd: seed.text,
         ss: scatterStart.text, st: scatterTrans.text,
         mn: minScale.text, mx: maxScale.text,
-        bs: blurSeed.text, bp: blurProb.text, bmin: blurMin.text, bmax: blurMax.text
+        bs: blurSeed.text, bp: blurProb.text, bmin: blurMin.text, bmax: blurMax.text,
+        scnbl: scatterEnable.value
     };
     presetsCache[String(idx)] = params;
     writePresets(presetsCache);
@@ -380,12 +419,17 @@ function loadSlot(idx) {
     entryBlur.text = p.b || "40";
     entryOffset.text = p.o || "80";
     if (entryDirection && p.dir !== undefined) entryDirection.selection = parseInt(p.dir);
+    if (entryMode && p.emode !== undefined) entryMode.selection = parseInt(p.emode);
+    if (entryEnable) entryEnable.value = (p.enbl !== undefined) ? p.enbl : true;
     exitStart.text = p.es || "3.5";
     exitDur.text = p.ed || "2.0";
     exitOffset.text = p.eo || "80";
+    if (exitMode && p.xmode !== undefined) exitMode.selection = parseInt(p.xmode);
+    if (exitEnable) exitEnable.value = (p.xenbl !== undefined) ? p.xenbl : true;
     heightAmp.text = p.a || "30";
     heightFreq.text = p.f || "0.7";
     speed.text = p.sp || "1.0";
+    if (heightEnable) heightEnable.value = (p.henbl !== undefined) ? p.henbl : true;
     scatterRange.text = p.r || "150";
     seed.text = p.sd || "1";
     scatterStart.text = p.ss || "2.0";
@@ -396,6 +440,7 @@ function loadSlot(idx) {
     blurProb.text = p.bp || "40";
     blurMin.text = p.bmin || "0";
     blurMax.text = p.bmax || "25";
+    if (scatterEnable) scatterEnable.value = (p.scnbl !== undefined) ? p.scnbl : true;
     setStatus("已加载预设 " + idx);
 }
 
@@ -404,12 +449,17 @@ function resetParams() {
     entryBlur.text = "40";
     entryOffset.text = "80";
     if (entryDirection) entryDirection.selection = 0;
+    if (entryMode) entryMode.selection = 0;
+    if (entryEnable) entryEnable.value = true;
     exitStart.text = "3.5";
     exitDur.text = "2.0";
     exitOffset.text = "80";
+    if (exitMode) exitMode.selection = 0;
+    if (exitEnable) exitEnable.value = true;
     heightAmp.text = "30";
     heightFreq.text = "0.7";
     speed.text = "1.0";
+    if (heightEnable) heightEnable.value = true;
     scatterRange.text = "150";
     seed.text = "1";
     scatterStart.text = "2.0";
@@ -420,6 +470,7 @@ function resetParams() {
     blurProb.text = "40";
     blurMin.text = "0";
     blurMax.text = "25";
+    if (scatterEnable) scatterEnable.value = true;
     setStatus("参数已复位");
 }
 
@@ -438,22 +489,127 @@ function updateLoadButtons() {
     }
 }
 
-// ---- 应用动画 ----
+// ---- 辅助函数：根据方向计算 Position 偏移 ----
+function getDirectionPos(offset, direction, is3D) {
+    if (is3D) {
+        if (direction === 1) return [offset, 0, 0];        // 从右到左
+        else if (direction === 2) return [0, -offset, 0];   // 从上到下
+        else if (direction === 3) return [0, offset, 0];    // 从下到上
+        else return [-offset, 0, 0];                        // 从左到右
+    } else {
+        if (direction === 1) return [offset, 0];
+        else if (direction === 2) return [0, -offset];
+        else if (direction === 3) return [0, offset];
+        else return [-offset, 0];
+    }
+}
+
+function getExitDirectionPos(offset, direction, is3D) {
+    // 出场方向与入场对称
+    if (is3D) {
+        if (direction === 1) return [-offset, 0, 0];        // 入场右→出场左
+        else if (direction === 2) return [0, offset, 0];     // 入场上一出场下
+        else if (direction === 3) return [0, -offset, 0];    // 入场下一出场
+        else return [offset, 0, 0];                          // 入场左→出场右
+    } else {
+        if (direction === 1) return [-offset, 0];
+        else if (direction === 2) return [0, offset];
+        else if (direction === 3) return [0, -offset];
+        else return [offset, 0];
+    }
+}
+
+// ---- 辅助函数：查找 Selector Start/End 属性 ----
+function findSelectorStartEnd(sel) {
+    var startProp = sel.property("ADBE Text Start");
+    var endProp = sel.property("ADBE Text End");
+    if (!startProp) startProp = sel.property("Start");
+    if (!endProp) endProp = sel.property("End");
+    if (!startProp && sel.numProperties >= 1) startProp = sel.property(1);
+    if (!endProp && sel.numProperties >= 2) endProp = sel.property(2);
+    return { start: startProp, end: endProp };
+}
+
+// ---- 辅助函数：查找 Animator 属性组 ----
+function findAnimatorProps(anim) {
+    var props = anim.property("ADBE Text Properties");
+    if (!props) {
+        for (var si = 1; si <= anim.numProperties; si++) {
+            var sp = anim.property(si);
+            if (sp.matchName && sp.matchName.indexOf("ADBE") >= 0 && sp.matchName.indexOf("Property") >= 0 && sp.matchName.indexOf("Select") < 0) {
+                props = sp; break;
+            }
+        }
+        if (!props) props = anim.property(anim.numProperties);
+    }
+    return props;
+}
+
+// ---- 查找 Animators 组 ----
+function findAnimatorsGroup(layer) {
+    var ag = layer.property("ADBE Text Animators");
+    if (!ag) {
+        var tp = layer.property("ADBE Text Properties");
+        if (tp) ag = tp.property("ADBE Text Animators");
+    }
+    if (!ag) {
+        for (var di = 1; di <= layer.numProperties; di++) {
+            var dp = layer.property(di);
+            if (dp.matchName && dp.matchName.indexOf("ADBE") >= 0 && dp.matchName.indexOf("nimator") >= 0) {
+                ag = dp; break;
+            }
+        }
+    }
+    return ag;
+}
+
+// ---- 获取文本长度 ----
+function getTextLen(layer) {
+    var textProp = layer.property("ADBE Text Properties");
+    var sourceText = textProp.property("ADBE Text Source Text");
+    if (!sourceText) sourceText = textProp.property("ADBE Text Document");
+    var textDoc = sourceText.value;
+    if (typeof textDoc === "string") return Math.max(1, textDoc.length);
+    else if (textDoc && textDoc.text) return Math.max(1, textDoc.text.length);
+    return 1;
+}
+
+// ---- 设置单个字符的 Percent Range ----
+function lockCharRange(sel, ci, textLen) {
+    var se = findSelectorStartEnd(sel);
+    if (se.start && se.end) {
+        se.start.setValue(((ci - 1) / textLen) * 100);
+        se.end.setValue((ci / textLen) * 100);
+    }
+}
+
+// ============================================================
+// 应用动画
+// ============================================================
 function applyAnimation() {
     try {
         setStatus("执行中...");
 
-        // 获取参数
+        // ---- 读取参数 ----
+        var pEntryEnbl   = entryEnable.value;
         var pEntryDur    = Math.max(0.1, getVal(entryDur, 2.0));
         var pEntryBlur   = Math.max(0, getVal(entryBlur, 40));
         var pEntryOff    = getVal(entryOffset, 80);
         var pDirection   = entryDirection && entryDirection.selection ? entryDirection.selection.index : 0;
+        var pEntryMode   = entryMode && entryMode.selection ? entryMode.selection.index : 0;  // 0=逐字, 1=一起
+
+        var pExitEnbl    = exitEnable.value;
         var pExitStart   = Math.max(0, getVal(exitStart, 3.5));
         var pExitDur     = Math.max(0.1, getVal(exitDur, 2.0));
         var pExitOff     = getVal(exitOffset, 80);
+        var pExitMode    = exitMode && exitMode.selection ? exitMode.selection.index : 0;  // 0=逐字, 1=一起
+
+        var pHeightEnbl  = heightEnable.value;
         var pHeightAmp   = Math.max(0, getVal(heightAmp, 30));
         var pHeightFreq  = Math.max(0.01, getVal(heightFreq, 0.7));
         var pSpeed       = Math.max(0.01, getVal(speed, 1.0));
+
+        var pScatterEnbl = scatterEnable.value;
         var pScatterRange = Math.max(0, getVal(scatterRange, 150));
         var pSeed        = Math.max(0, getVal(seed, 1));
         var pScatterStart = Math.max(0, getVal(scatterStart, 2.0));
@@ -465,7 +621,7 @@ function applyAnimation() {
         var pBlurMin     = Math.max(0, getVal(blurMin, 0));
         var pBlurMax     = Math.max(0, getVal(blurMax, 25));
 
-        // 验证选区
+        // ---- 验证选区 ----
         var comp = app.project.activeItem;
         if (!comp || !(comp instanceof CompItem)) {
             setStatus("错误: 请先激活一个合成"); return;
@@ -475,30 +631,12 @@ function applyAnimation() {
             setStatus("错误: 请选中一个文本图层"); return;
         }
 
-        // ---- 获取播放头位置作为动画起始时间 ----
         var startTime = comp.time;
-
-        // ---- 查找文字动画器组（兼容不同AE版本） ----
-        // AE 2026 中文版中，Text Animators 位于 Text Properties 内部
-        var animatorsGroup = layer.property("ADBE Text Animators");
-        if (!animatorsGroup) {
-            var textProps = layer.property("ADBE Text Properties");
-            if (textProps) {
-                animatorsGroup = textProps.property("ADBE Text Animators");
-            }
-        }
-        // 最终尝试：按名称搜索
-        if (!animatorsGroup) {
-            for (var di = 1; di <= layer.numProperties; di++) {
-                var dp = layer.property(di);
-                if (dp.matchName && dp.matchName.indexOf("ADBE") >= 0 && dp.matchName.indexOf("nimator") >= 0) {
-                    animatorsGroup = dp; break;
-                }
-            }
-        }
+        var animatorsGroup = findAnimatorsGroup(layer);
         if (!animatorsGroup) {
             setStatus("错误: 找不到文字动画器组"); return;
         }
+
         // 清除旧的歌词动画器
         for (var i = animatorsGroup.numProperties; i >= 1; i--) {
             var a = animatorsGroup.property(i);
@@ -507,301 +645,288 @@ function applyAnimation() {
             }
         }
 
-        // ---- 检查文本长度 ----
-        var textProp = layer.property("ADBE Text Properties");
-        var sourceText = textProp.property("ADBE Text Source Text");
-        if (!sourceText) sourceText = textProp.property("ADBE Text Document");
-        var textDoc = sourceText.value;
-        var textLen = 1;
-        if (typeof textDoc === "string") textLen = textDoc.length;
-        else if (textDoc && textDoc.text) textLen = textDoc.text.length;
+        var textLen = getTextLen(layer);
 
         // ============================================================
         // Animator 1: 入场
         // ============================================================
-        var entryAnim = animatorsGroup.addProperty("ADBE Text Animator");
-        entryAnim.name = "歌词_入场";
+        if (pEntryEnbl) {
+            var entryAnim = animatorsGroup.addProperty("ADBE Text Animator");
+            entryAnim.name = "歌词_入场";
 
-        var entrySel = entryAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
-        // 查找 Selector 的 Start/End 属性（兼容 matchName 差异）
-        var entryStartProp = entrySel.property("ADBE Text Start");
-        var entryEndProp   = entrySel.property("ADBE Text End");
-        if (!entryStartProp || !entryEndProp) {
-            // 尝试按显示名称查找
-            if (!entryStartProp) entryStartProp = entrySel.property("Start");
-            if (!entryEndProp) entryEndProp = entrySel.property("End");
-            // 再尝试按索引查找（通常是 [1]=Start, [2]=End）
-            if (!entryStartProp && entrySel.numProperties >= 1) entryStartProp = entrySel.property(1);
-            if (!entryEndProp && entrySel.numProperties >= 2) entryEndProp = entrySel.property(2);
-            if (!entryStartProp || !entryEndProp) {
-                setStatus("错误: 找不到 Selector Start/End"); return;
+            var entrySel = entryAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+            var entrySE = findSelectorStartEnd(entrySel);
+            if (!entrySE.start || !entrySE.end) {
+                setStatus("错误: 找不到入场 Selector Start/End"); return;
             }
-        }
-        entryEndProp.setValue(100);
+            entrySE.end.setValue(100);
 
-        var k1 = entryStartProp.addKey(startTime);
-        entryStartProp.setValueAtKey(k1, 0);
-        var k2 = entryStartProp.addKey(startTime + pEntryDur / pSpeed);
-        entryStartProp.setValueAtKey(k2, 100);
-
-        var entryProps = entryAnim.property("ADBE Text Properties");
-        if (!entryProps) {
-            // 尝试按名称查找属性组
-            for (var si = 1; si <= entryAnim.numProperties; si++) {
-                var sp = entryAnim.property(si);
-                if (sp.matchName && sp.matchName.indexOf("ADBE") >= 0 && (sp.matchName.indexOf("Property") >= 0 || sp.matchName.indexOf("属性") >= 0)) {
-                    // 跳过 Selectors 组
-                    if (sp.matchName.indexOf("Select") < 0) {
-                        entryProps = sp; break;
-                    }
-                }
-            }
-            if (!entryProps) entryProps = entryAnim.property(entryAnim.numProperties); // 最后一个通常是属性组
-            if (!entryProps) { setStatus("错误: 找不到 Animator 属性组"); return; }
-        }
-        // Opacity=0: 未露出的字符完全不可见
-        var entryOpProp = addAnimProperty(entryProps, "ADBE Text Opacity");
-        if (entryOpProp) { try { entryOpProp.setValue(0); } catch(e) {} }
-
-        var entryBlurProp = addAnimProperty(entryProps, "ADBE Text Blur");
-        if (entryBlurProp) {
-            try {
-                if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                    entryBlurProp.setValue([pEntryBlur, pEntryBlur]);
-                } else {
-                    entryBlurProp.setValue(pEntryBlur);
-                }
-            } catch (e2) {
-                try { entryBlurProp.setValue(pEntryBlur); } catch (e) {}
-            }
-        }
-
-        var entryPosProp = addAnimProperty(entryProps, "ADBE Text Position");
-        if (entryPosProp) {
-            // 根据方向计算入场 Position 初始偏移
-            var entryPosVal;
-            var pType = entryPosProp.propertyValueType;
-            if (pType === 6413) { // ThreeD
-                if (pDirection === 1) entryPosVal = [pEntryOff, 0, 0];       // 从右到左
-                else if (pDirection === 2) entryPosVal = [0, -pEntryOff, 0];  // 从上到下
-                else if (pDirection === 3) entryPosVal = [0, pEntryOff, 0];   // 从下到上
-                else entryPosVal = [-pEntryOff, 0, 0];                        // 从左到右（默认）
+            if (pEntryMode === 0) {
+                // 逐字出现：Start 从 0 → 100 扫描
+                var ek1 = entrySE.start.addKey(startTime);
+                entrySE.start.setValueAtKey(ek1, 0);
+                var ek2 = entrySE.start.addKey(startTime + pEntryDur / pSpeed);
+                entrySE.start.setValueAtKey(ek2, 100);
             } else {
-                if (pDirection === 1) entryPosVal = [pEntryOff, 0];           // 从右到左
-                else if (pDirection === 2) entryPosVal = [0, -pEntryOff];     // 从上到下
-                else if (pDirection === 3) entryPosVal = [0, pEntryOff];      // 从下到上
-                else entryPosVal = [-pEntryOff, 0];                           // 从左到右（默认）
+                // 一起出现：整个文字一起出现，用 Opacity 从 0→100 关键帧
+                // Range Selector 始终覆盖全部字符
+                entrySE.start.setValue(0);
+                entrySE.end.setValue(100);
             }
-            try {
-                entryPosProp.setValue(entryPosVal);
-            } catch (e3) {
-                setStatus("错误: Position 属性设置失败");
+
+            var entryProps = findAnimatorProps(entryAnim);
+            if (!entryProps) { setStatus("错误: 找不到入场 Animator 属性组"); return; }
+
+            // Opacity
+            var entryOpProp = addAnimProperty(entryProps, "ADBE Text Opacity");
+            if (entryOpProp) {
+                if (pEntryMode === 1) {
+                    // 一起出现：用 Opacity 关键帧控制淡入
+                    try { entryOpProp.setValue(0); } catch(e) {}
+                    var eok1 = entryOpProp.addKey(startTime);
+                    entryOpProp.setValueAtKey(eok1, 0);
+                    var eok2 = entryOpProp.addKey(startTime + pEntryDur / pSpeed);
+                    entryOpProp.setValueAtKey(eok2, 100);
+                } else {
+                    // 逐字出现：Opacity=0 配合 Range Selector 扫描
+                    try { entryOpProp.setValue(0); } catch(e) {}
+                }
+            }
+
+            // Blur
+            var entryBlurProp = addAnimProperty(entryProps, "ADBE Text Blur");
+            if (entryBlurProp) {
+                if (pEntryMode === 1) {
+                    // 一起出现：Blur 从最大值 → 0 关键帧
+                    try {
+                        if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                            entryBlurProp.setValue([pEntryBlur, pEntryBlur]);
+                        } else {
+                            entryBlurProp.setValue(pEntryBlur);
+                        }
+                    } catch(e) {}
+                    var ebk1 = entryBlurProp.addKey(startTime);
+                    if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                        entryBlurProp.setValueAtKey(ebk1, [pEntryBlur, pEntryBlur]);
+                    } else {
+                        entryBlurProp.setValueAtKey(ebk1, pEntryBlur);
+                    }
+                    var ebk2 = entryBlurProp.addKey(startTime + pEntryDur / pSpeed);
+                    if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                        entryBlurProp.setValueAtKey(ebk2, [0, 0]);
+                    } else {
+                        entryBlurProp.setValueAtKey(ebk2, 0);
+                    }
+                } else {
+                    try {
+                        if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                            entryBlurProp.setValue([pEntryBlur, pEntryBlur]);
+                        } else {
+                            entryBlurProp.setValue(pEntryBlur);
+                        }
+                    } catch(e) {}
+                }
+            }
+
+            // Position
+            var entryPosProp = addAnimProperty(entryProps, "ADBE Text Position");
+            if (entryPosProp) {
+                var is3D = (entryPosProp.propertyValueType === 6413);
+                var entryPosVal = getDirectionPos(pEntryOff, pDirection, is3D);
+                if (pEntryMode === 1) {
+                    // 一起出现：Position 从偏移 → 0 关键帧
+                    try { entryPosProp.setValue(entryPosVal); } catch(e) {}
+                    var epk1 = entryPosProp.addKey(startTime);
+                    entryPosProp.setValueAtKey(epk1, entryPosVal);
+                    var epk2 = entryPosProp.addKey(startTime + pEntryDur / pSpeed);
+                    entryPosProp.setValueAtKey(epk2, is3D ? [0,0,0] : [0,0]);
+                } else {
+                    try { entryPosProp.setValue(entryPosVal); } catch(e) {}
+                }
             }
         }
 
         // ============================================================
         // Animator 2: 出场
         // ============================================================
-        var exitStartTime = pExitStart;
-        var exitEndTime   = exitStartTime + pExitDur / pSpeed;
+        if (pExitEnbl) {
+            var exitStartTime = pExitStart;
+            var exitEndTime   = exitStartTime + pExitDur / pSpeed;
 
-        var exitAnim = animatorsGroup.addProperty("ADBE Text Animator");
-        exitAnim.name = "歌词_出场";
+            var exitAnim = animatorsGroup.addProperty("ADBE Text Animator");
+            exitAnim.name = "歌词_出场";
 
-        var exitSel = exitAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
-        // 查找 Selector 的 Start/End 属性（兼容 matchName 差异）
-        var exitStartProp = exitSel.property("ADBE Text Start");
-        var exitEndProp   = exitSel.property("ADBE Text End");
-        if (!exitStartProp || !exitEndProp) {
-            if (!exitStartProp) exitStartProp = exitSel.property("Start");
-            if (!exitEndProp) exitEndProp = exitSel.property("End");
-            if (!exitStartProp && exitSel.numProperties >= 1) exitStartProp = exitSel.property(1);
-            if (!exitEndProp && exitSel.numProperties >= 2) exitEndProp = exitSel.property(2);
-            if (!exitStartProp || !exitEndProp) {
+            var exitSel = exitAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+            var exitSE = findSelectorStartEnd(exitSel);
+            if (!exitSE.start || !exitSE.end) {
                 setStatus("错误: 找不到出场 Selector Start/End"); return;
             }
-        }
-        exitEndProp.setValue(100);
+            exitSE.end.setValue(100);
 
-        var k3 = exitStartProp.addKey(startTime + exitStartTime);
-        exitStartProp.setValueAtKey(k3, 100);
-        var k4 = exitStartProp.addKey(startTime + exitEndTime);
-        exitStartProp.setValueAtKey(k4, 0);
-
-        var exitProps = exitAnim.property("ADBE Text Properties");
-        if (!exitProps) {
-            for (var si = 1; si <= exitAnim.numProperties; si++) {
-                var sp = exitAnim.property(si);
-                if (sp.matchName && sp.matchName.indexOf("ADBE") >= 0 && sp.matchName.indexOf("Property") >= 0 && sp.matchName.indexOf("Select") < 0) {
-                    exitProps = sp; break;
-                }
-            }
-            if (!exitProps) exitProps = exitAnim.property(exitAnim.numProperties);
-            if (!exitProps) { setStatus("错误: 找不到出场 Animator 属性组"); return; }
-        }
-
-        var exitOpProp = addAnimProperty(exitProps, "ADBE Text Opacity");
-        if (exitOpProp) exitOpProp.setValue(0);
-
-        var exitBlurProp = addAnimProperty(exitProps, "ADBE Text Blur");
-        if (exitBlurProp) {
-            try {
-                if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                    exitBlurProp.setValue([pEntryBlur, pEntryBlur]);
-                } else {
-                    exitBlurProp.setValue(pEntryBlur);
-                }
-            } catch (e2) {
-                try { exitBlurProp.setValue(pEntryBlur); } catch (e) {}
-            }
-        }
-
-        var exitPosProp = addAnimProperty(exitProps, "ADBE Text Position");
-        if (exitPosProp) {
-            // 出场方向与入场对称
-            var exitPosVal;
-            var epType = exitPosProp.propertyValueType;
-            if (epType === 6413) { // ThreeD
-                if (pDirection === 1) exitPosVal = [-pExitOff, 0, 0];        // 入场从右→出场向左
-                else if (pDirection === 2) exitPosVal = [0, pExitOff, 0];     // 入场从上→出场向下
-                else if (pDirection === 3) exitPosVal = [0, -pExitOff, 0];    // 入场从下→出场向上
-                else exitPosVal = [pExitOff, 0, 0];                           // 入场从左→出场向右
+            if (pExitMode === 0) {
+                // 逐字消失：Start 从 100 → 0 扫描
+                var xk1 = exitSE.start.addKey(startTime + exitStartTime);
+                exitSE.start.setValueAtKey(xk1, 100);
+                var xk2 = exitSE.start.addKey(startTime + exitEndTime);
+                exitSE.start.setValueAtKey(xk2, 0);
             } else {
-                if (pDirection === 1) exitPosVal = [-pExitOff, 0];            // 入场从右→出场向左
-                else if (pDirection === 2) exitPosVal = [0, pExitOff];        // 入场从上→出场向下
-                else if (pDirection === 3) exitPosVal = [0, -pExitOff];       // 入场从下→出场向上
-                else exitPosVal = [pExitOff, 0];                              // 入场从左→出场向右
+                // 一起消失：Range Selector 始终覆盖全部
+                exitSE.start.setValue(0);
+                exitSE.end.setValue(100);
             }
-            exitPosProp.setValue(exitPosVal);
+
+            var exitProps = findAnimatorProps(exitAnim);
+            if (!exitProps) { setStatus("错误: 找不到出场 Animator 属性组"); return; }
+
+            // Opacity
+            var exitOpProp = addAnimProperty(exitProps, "ADBE Text Opacity");
+            if (exitOpProp) {
+                if (pExitMode === 1) {
+                    // 一起消失：Opacity 从 100 → 0 关键帧
+                    try { exitOpProp.setValue(100); } catch(e) {}
+                    var xok1 = exitOpProp.addKey(startTime + exitStartTime);
+                    exitOpProp.setValueAtKey(xok1, 100);
+                    var xok2 = exitOpProp.addKey(startTime + exitEndTime);
+                    exitOpProp.setValueAtKey(xok2, 0);
+                } else {
+                    exitOpProp.setValue(0);
+                }
+            }
+
+            // Blur
+            var exitBlurProp = addAnimProperty(exitProps, "ADBE Text Blur");
+            if (exitBlurProp) {
+                if (pExitMode === 1) {
+                    // 一起消失：Blur 从 0 → 最大值 关键帧
+                    try {
+                        if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                            exitBlurProp.setValue([0, 0]);
+                        } else {
+                            exitBlurProp.setValue(0);
+                        }
+                    } catch(e) {}
+                    var xbk1 = exitBlurProp.addKey(startTime + exitStartTime);
+                    if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                        exitBlurProp.setValueAtKey(xbk1, [0, 0]);
+                    } else {
+                        exitBlurProp.setValueAtKey(xbk1, 0);
+                    }
+                    var xbk2 = exitBlurProp.addKey(startTime + exitEndTime);
+                    if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                        exitBlurProp.setValueAtKey(xbk2, [pEntryBlur, pEntryBlur]);
+                    } else {
+                        exitBlurProp.setValueAtKey(xbk2, pEntryBlur);
+                    }
+                } else {
+                    try {
+                        if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
+                            exitBlurProp.setValue([pEntryBlur, pEntryBlur]);
+                        } else {
+                            exitBlurProp.setValue(pEntryBlur);
+                        }
+                    } catch(e) {}
+                }
+            }
+
+            // Position
+            var exitPosProp = addAnimProperty(exitProps, "ADBE Text Position");
+            if (exitPosProp) {
+                var eis3D = (exitPosProp.propertyValueType === 6413);
+                var exitPosVal = getExitDirectionPos(pExitOff, pDirection, eis3D);
+                if (pExitMode === 1) {
+                    // 一起消失：Position 从 0 → 偏移 关键帧
+                    try { exitPosProp.setValue(eis3D ? [0,0,0] : [0,0]); } catch(e) {}
+                    var xpk1 = exitPosProp.addKey(startTime + exitStartTime);
+                    exitPosProp.setValueAtKey(xpk1, eis3D ? [0,0,0] : [0,0]);
+                    var xpk2 = exitPosProp.addKey(startTime + exitEndTime);
+                    exitPosProp.setValueAtKey(xpk2, exitPosVal);
+                } else {
+                    exitPosProp.setValue(exitPosVal);
+                }
+            }
         }
 
         // ============================================================
         // Animator 3: 散落分布（逐字随机位置 + 随机大小 + 随机模糊 + 时间渐入）
         // ============================================================
-        // 每个字符独立一个动画器，Percent Range Selector 锁定单个字符
-        // 用 seedRandom() 做可复现的随机分布
-        // Position 表达式增加时间渐入因子，让散落从 0 渐变到目标偏移
-        for (var ci = 1; ci <= textLen; ci++) {
-            var sAnim = animatorsGroup.addProperty("ADBE Text Animator");
-            sAnim.name = "歌词_散落_" + ci;
+        if (pScatterEnbl) {
+            for (var ci = 1; ci <= textLen; ci++) {
+                var sAnim = animatorsGroup.addProperty("ADBE Text Animator");
+                sAnim.name = "歌词_散落_" + ci;
 
-            // 获取属性组
-            var sProps = sAnim.property("ADBE Text Properties");
-            if (!sProps) {
-                for (var si = 1; si <= sAnim.numProperties; si++) {
-                    var sp = sAnim.property(si);
-                    if (sp.matchName && sp.matchName.indexOf("ADBE") >= 0 && sp.matchName.indexOf("Property") >= 0 && sp.matchName.indexOf("Select") < 0) {
-                        sProps = sp; break;
-                    }
+                var sProps = findAnimatorProps(sAnim);
+                if (!sProps) continue;
+
+                var sSel = sAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+                lockCharRange(sSel, ci, textLen);
+
+                // Position
+                var sPos = addAnimProperty(sProps, "ADBE Text Position");
+                if (sPos) {
+                    var posExpr = "seedRandom(" + pSeed + " + " + ci + ", true);\n";
+                    posExpr += "r = " + pScatterRange + ";\n";
+                    posExpr += "t = time - " + startTime.toFixed(3) + ";\n";
+                    posExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
+                    posExpr += "[random(-r, r) * fade, random(-r, r) * fade]";
+                    sPos.expressionEnabled = true;
+                    sPos.expression = posExpr;
                 }
-                if (!sProps) sProps = sAnim.property(sAnim.numProperties);
-            }
-            if (!sProps) continue;
 
-            // 添加 Selector，仅影响当前字符（Percent 模式）
-            var sSel = sAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
-            var sPStart = sSel.property("ADBE Text Percent Start");
-            if (!sPStart) sPStart = sSel.property("ADBE Text Start");
-            if (!sPStart) sPStart = sSel.property("Start");
-            if (!sPStart && sSel.numProperties >= 1) sPStart = sSel.property(1);
-            var sPEnd = sSel.property("ADBE Text Percent End");
-            if (!sPEnd) sPEnd = sSel.property("ADBE Text End");
-            if (!sPEnd) sPEnd = sSel.property("End");
-            if (!sPEnd && sSel.numProperties >= 2) sPEnd = sSel.property(2);
-            if (sPStart && sPEnd) {
-                var pStart = ((ci - 1) / textLen) * 100;
-                var pEnd = (ci / textLen) * 100;
-                sPStart.setValue(pStart);
-                sPEnd.setValue(pEnd);
-            }
+                // Scale
+                var sScale = addAnimProperty(sProps, "ADBE Text Scale");
+                if (sScale) {
+                    var scaleExpr = "seedRandom(" + pSeed + " + " + ci + " + 9999, true);\n";
+                    scaleExpr += "t = time - " + startTime.toFixed(3) + ";\n";
+                    scaleExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
+                    scaleExpr += "s = random(" + pMinScale + ", " + pMaxScale + ");\n";
+                    scaleExpr += "base = 100;\n";
+                    scaleExpr += "[base + (s - base) * fade, base + (s - base) * fade]";
+                    sScale.expressionEnabled = true;
+                    sScale.expression = scaleExpr;
+                }
 
-            // Position: seedRandom + random + 时间渐入因子
-            var sPos = addAnimProperty(sProps, "ADBE Text Position");
-            if (sPos) {
-                var posExpr = "seedRandom(" + pSeed + " + " + ci + ", true);\n";
-                posExpr += "r = " + pScatterRange + ";\n";
-                posExpr += "t = time - " + startTime.toFixed(3) + ";\n";
-                posExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
-                posExpr += "[random(-r, r) * fade, random(-r, r) * fade]";
-                sPos.expressionEnabled = true;
-                sPos.expression = posExpr;
-            }
-
-            // Scale: seedRandom（不同种子偏移）+ random 生成随机缩放
-            var sScale = addAnimProperty(sProps, "ADBE Text Scale");
-            if (sScale) {
-                var scaleExpr = "seedRandom(" + pSeed + " + " + ci + " + 9999, true);\n";
-                scaleExpr += "t = time - " + startTime.toFixed(3) + ";\n";
-                scaleExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
-                scaleExpr += "s = random(" + pMinScale + ", " + pMaxScale + ");\n";
-                scaleExpr += "base = 100;\n";
-                scaleExpr += "[base + (s - base) * fade, base + (s - base) * fade]";
-                sScale.expressionEnabled = true;
-                sScale.expression = scaleExpr;
-            }
-
-            // 随机模糊：基于 blurSeed 决定该字符是否模糊
-            // 注意：AE 2026 Blur 属性可能是 2D 类型，表达式需返回 [x, y]
-            if (pBlurProb > 0) {
-                var sBlur = addAnimProperty(sProps, "ADBE Text Blur");
-                if (sBlur) {
-                    var blurExpr = "seedRandom(" + pBlurSeed + " + " + ci + ", true);\n";
-                    blurExpr += "r = random(0, 100);\n";
-                    blurExpr += "t = time - " + startTime.toFixed(3) + ";\n";
-                    blurExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
-                    blurExpr += "if (r < " + pBlurProb + ") {\n";
-                    blurExpr += "    seedRandom(" + pBlurSeed + " + " + ci + " + 5555, true);\n";
-                    blurExpr += "    v = random(" + pBlurMin + ", " + pBlurMax + ") * fade;\n";
-                    blurExpr += "} else { v = 0; }\n";
-                    blurExpr += "[v, v]";
-                    sBlur.expressionEnabled = true;
-                    sBlur.expression = blurExpr;
+                // 随机模糊
+                if (pBlurProb > 0) {
+                    var sBlur = addAnimProperty(sProps, "ADBE Text Blur");
+                    if (sBlur) {
+                        var blurExpr = "seedRandom(" + pBlurSeed + " + " + ci + ", true);\n";
+                        blurExpr += "r = random(0, 100);\n";
+                        blurExpr += "t = time - " + startTime.toFixed(3) + ";\n";
+                        blurExpr += "fade = linear(t, " + pScatterStart.toFixed(3) + ", " + (pScatterStart + pScatterTrans).toFixed(3) + ", 0, 1);\n";
+                        blurExpr += "if (r < " + pBlurProb + ") {\n";
+                        blurExpr += "    seedRandom(" + pBlurSeed + " + " + ci + " + 5555, true);\n";
+                        blurExpr += "    v = random(" + pBlurMin + ", " + pBlurMax + ") * fade;\n";
+                        blurExpr += "} else { v = 0; }\n";
+                        blurExpr += "[v, v]";
+                        sBlur.expressionEnabled = true;
+                        sBlur.expression = blurExpr;
+                    }
                 }
             }
         }
 
         // ============================================================
-        // Animator 4: 高度错落（波浪浮动，逐字 Position 表达式）
+        // Animator 4: 高度错落（波浪浮动）
         // ============================================================
-        for (var ci = 1; ci <= textLen; ci++) {
-            var hAnim = animatorsGroup.addProperty("ADBE Text Animator");
-            hAnim.name = "歌词_高度_" + ci;
+        if (pHeightEnbl) {
+            for (var ci = 1; ci <= textLen; ci++) {
+                var hAnim = animatorsGroup.addProperty("ADBE Text Animator");
+                hAnim.name = "歌词_高度_" + ci;
 
-            var hProps = hAnim.property("ADBE Text Properties");
-            if (!hProps) {
-                for (var si = 1; si <= hAnim.numProperties; si++) {
-                    var sp = hAnim.property(si);
-                    if (sp.matchName && sp.matchName.indexOf("ADBE") >= 0 && sp.matchName.indexOf("Property") >= 0 && sp.matchName.indexOf("Select") < 0) {
-                        hProps = sp; break;
-                    }
+                var hProps = findAnimatorProps(hAnim);
+                if (!hProps) continue;
+
+                var hSel = hAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+                lockCharRange(hSel, ci, textLen);
+
+                var hPos = addAnimProperty(hProps, "ADBE Text Position");
+                if (hPos) {
+                    var hExpr = "amp = " + pHeightAmp + ";\n";
+                    hExpr += "freq = " + pHeightFreq + ";\n";
+                    hExpr += "[0, Math.sin(time * freq * 2 + " + ci + " * 0.8) * amp]";
+                    hPos.expressionEnabled = true;
+                    hPos.expression = hExpr;
                 }
-                if (!hProps) hProps = hAnim.property(hAnim.numProperties);
-            }
-            if (!hProps) continue;
-
-            var hSel = hAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
-            var hPStart = hSel.property("ADBE Text Percent Start");
-            if (!hPStart) hPStart = hSel.property("ADBE Text Start");
-            if (!hPStart) hPStart = hSel.property("Start");
-            if (!hPStart && hSel.numProperties >= 1) hPStart = hSel.property(1);
-            var hPEnd = hSel.property("ADBE Text Percent End");
-            if (!hPEnd) hPEnd = hSel.property("ADBE Text End");
-            if (!hPEnd) hPEnd = hSel.property("End");
-            if (!hPEnd && hSel.numProperties >= 2) hPEnd = hSel.property(2);
-            if (hPStart && hPEnd) {
-                var pStart = ((ci - 1) / textLen) * 100;
-                var pEnd = (ci / textLen) * 100;
-                hPStart.setValue(pStart);
-                hPEnd.setValue(pEnd);
-            }
-
-            var hPos = addAnimProperty(hProps, "ADBE Text Position");
-            if (hPos) {
-                var hExpr = "amp = " + pHeightAmp + ";\n";
-                hExpr += "freq = " + pHeightFreq + ";\n";
-                hExpr += "[0, Math.sin(time * freq * 2 + " + ci + " * 0.8) * amp]";
-                hPos.expressionEnabled = true;
-                hPos.expression = hExpr;
             }
         }
 
@@ -810,10 +935,14 @@ function applyAnimation() {
         // ============================================================
         var dirNames = ["左→右", "右→左", "上→下", "下→上"];
         var dirName = dirNames[pDirection] || "左→右";
-        setStatus("完成! 入场" + (pEntryDur / pSpeed).toFixed(1) +
-            "s(" + dirName + ") 出场" + exitStartTime.toFixed(1) + "-" + exitEndTime.toFixed(1) +
-            "s 散落" + textLen + "字符 种子=" + pSeed);
-        $.writeln("歌词散落动画v3.0已应用成功: " + textLen + "字符 方向=" + dirName + " 种子=" + pSeed);
+        var parts = [];
+        if (pEntryEnbl) parts.push("入场" + (pEntryDur / pSpeed).toFixed(1) + "s(" + dirName + ")");
+        if (pExitEnbl) parts.push("出场" + pExitStart.toFixed(1) + "-" + (pExitStart + pExitDur / pSpeed).toFixed(1) + "s");
+        if (pScatterEnbl) parts.push("散落" + textLen + "字符");
+        if (pHeightEnbl) parts.push("波浪");
+        var msg = parts.length > 0 ? parts.join(" ") : "无动画（全部关闭）";
+        setStatus("完成! " + msg);
+        $.writeln("歌词散落动画v3.1已应用成功: " + msg);
 
     } catch (err) {
         var errLine = err.line || err.lineNumber || "?";
@@ -836,5 +965,4 @@ pal.layout.layout(true);
 if (pal instanceof Panel) {
     try { pal.layout.resize(); } catch (e) {}
 }
-// 加载已有预设状态
 try { updateLoadButtons(); } catch (e) {}
