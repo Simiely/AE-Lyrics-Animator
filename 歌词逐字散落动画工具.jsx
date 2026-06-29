@@ -292,19 +292,7 @@ function clearAnimators() {
         return;
     }
 
-    var animatorsGroup = layer.property("ADBE Text Animators");
-    if (!animatorsGroup) {
-        var textProps = layer.property("ADBE Text Properties");
-        if (textProps) animatorsGroup = textProps.property("ADBE Text Animators");
-    }
-    if (!animatorsGroup) {
-        for (var di = 1; di <= layer.numProperties; di++) {
-            var dp = layer.property(di);
-            if (dp.matchName && dp.matchName.indexOf("ADBE") >= 0 && dp.matchName.indexOf("nimator") >= 0) {
-                animatorsGroup = dp; break;
-            }
-        }
-    }
+    var animatorsGroup = findAnimatorsGroup(layer);
     if (!animatorsGroup) { setStatus("该图层没有文字动画器", true); return; }
 
     var removed = 0;
@@ -332,17 +320,17 @@ function addAnimProperty(propsGroup, propType) {
     else if (propType === "ADBE Text Scale") candidates = ["ADBE Text Scale", "ADBE Text Scale 3D", "Scale", "缩放"];
 
     if (propsGroup.addProperty) {
-        for (var ci = 0; ci < candidates.length; ci++) {
+        for (var ai = 0; ai < candidates.length; ai++) {
             try {
-                var result = propsGroup.addProperty(candidates[ci]);
+                var result = propsGroup.addProperty(candidates[ai]);
                 if (result) return result;
             } catch (e) {}
         }
     }
 
-    for (var ci = 0; ci < candidates.length; ci++) {
+    for (var ai = 0; ai < candidates.length; ai++) {
         try {
-            var result = propsGroup.property(candidates[ci]);
+            var result = propsGroup.property(candidates[ai]);
             if (result) return result;
         } catch (e) {}
     }
@@ -487,6 +475,26 @@ function updateLoadButtons() {
     }
 }
 
+// ---- 辅助函数：安全设置 Blur 值（兼容 2D/1D） ----
+function setBlurValue(prop, val) {
+    try {
+        if (prop.propertyValueType === PropertyValueType.TwoD) {
+            prop.setValue([val, val]);
+        } else {
+            prop.setValue(val);
+        }
+    } catch (e) {}
+}
+function setBlurValueAtKey(prop, key, val) {
+    try {
+        if (prop.propertyValueType === PropertyValueType.TwoD) {
+            prop.setValueAtKey(key, [val, val]);
+        } else {
+            prop.setValueAtKey(key, val);
+        }
+    } catch (e) {}
+}
+
 // ---- 辅助函数：根据方向计算 Position 偏移 ----
 function getDirectionPos(offset, direction, is3D) {
     if (is3D) {
@@ -600,6 +608,7 @@ function applyAnimation() {
         var pExitStart   = Math.max(0, getVal(exitStart, 3.5));
         var pExitDur     = Math.max(0.1, getVal(exitDur, 2.0));
         var pExitOff     = getVal(exitOffset, 80);
+        var pExitBlur    = pEntryBlur;  // 出场模糊复用入场模糊值
         var pExitMode    = exitMode && exitMode.selection ? exitMode.selection.index : 0;  // 0=逐字, 1=一起
 
         var pHeightEnbl  = heightEnable.value;
@@ -696,33 +705,13 @@ function applyAnimation() {
             if (entryBlurProp) {
                 if (pEntryMode === 1) {
                     // 一起出现：Blur 从最大值 → 0 关键帧
-                    try {
-                        if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                            entryBlurProp.setValue([pEntryBlur, pEntryBlur]);
-                        } else {
-                            entryBlurProp.setValue(pEntryBlur);
-                        }
-                    } catch(e) {}
+                    setBlurValue(entryBlurProp, pEntryBlur);
                     var ebk1 = entryBlurProp.addKey(startTime);
-                    if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                        entryBlurProp.setValueAtKey(ebk1, [pEntryBlur, pEntryBlur]);
-                    } else {
-                        entryBlurProp.setValueAtKey(ebk1, pEntryBlur);
-                    }
+                    setBlurValueAtKey(entryBlurProp, ebk1, pEntryBlur);
                     var ebk2 = entryBlurProp.addKey(startTime + pEntryDur / pSpeed);
-                    if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                        entryBlurProp.setValueAtKey(ebk2, [0, 0]);
-                    } else {
-                        entryBlurProp.setValueAtKey(ebk2, 0);
-                    }
+                    setBlurValueAtKey(entryBlurProp, ebk2, 0);
                 } else {
-                    try {
-                        if (entryBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                            entryBlurProp.setValue([pEntryBlur, pEntryBlur]);
-                        } else {
-                            entryBlurProp.setValue(pEntryBlur);
-                        }
-                    } catch(e) {}
+                    setBlurValue(entryBlurProp, pEntryBlur);
                 }
             }
 
@@ -795,34 +784,13 @@ function applyAnimation() {
             var exitBlurProp = addAnimProperty(exitProps, "ADBE Text Blur");
             if (exitBlurProp) {
                 if (pExitMode === 1) {
-                    // 一起消失：Blur 从 0 → 最大值 关键帧
-                    try {
-                        if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                            exitBlurProp.setValue([0, 0]);
-                        } else {
-                            exitBlurProp.setValue(0);
-                        }
-                    } catch(e) {}
+                    setBlurValue(exitBlurProp, 0);
                     var xbk1 = exitBlurProp.addKey(startTime + exitStartTime);
-                    if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                        exitBlurProp.setValueAtKey(xbk1, [0, 0]);
-                    } else {
-                        exitBlurProp.setValueAtKey(xbk1, 0);
-                    }
+                    setBlurValueAtKey(exitBlurProp, xbk1, 0);
                     var xbk2 = exitBlurProp.addKey(startTime + exitEndTime);
-                    if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                        exitBlurProp.setValueAtKey(xbk2, [pEntryBlur, pEntryBlur]);
-                    } else {
-                        exitBlurProp.setValueAtKey(xbk2, pEntryBlur);
-                    }
+                    setBlurValueAtKey(exitBlurProp, xbk2, pExitBlur);
                 } else {
-                    try {
-                        if (exitBlurProp.propertyValueType === PropertyValueType.TwoD) {
-                            exitBlurProp.setValue([pEntryBlur, pEntryBlur]);
-                        } else {
-                            exitBlurProp.setValue(pEntryBlur);
-                        }
-                    } catch(e) {}
+                    setBlurValue(exitBlurProp, pExitBlur);
                 }
             }
 
