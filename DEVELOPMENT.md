@@ -171,7 +171,45 @@ hPEnd.setValue(pEnd);
 
 **经验教训：** Index 模式需要额外设置 Selector 的 Units 属性（matchName 为 `ADBE Text Selector Units`），且在不同 AE 版本中兼容性更差。Percent 模式在所有版本中稳定可靠。
 
+### 12. v2.0 散落分布：seedRandom + 逐字独立动画器
+
+**需求：** 将每个字符随机散布在画面上，且大小不一，同时支持种子参数保证可复现性。
+
+**实现方案：** 复用逐字独立动画器框架，每个字符一个动画器，Percent Range Selector 锁定单个字符。
+
+**Position 表达式（随机位置）：**
+
+```javascript
+// ci = 字符索引, pSeed = 用户种子
+seedRandom(pSeed + ci, true);
+r = pScatterRange;
+[random(-r, r), random(-r, r)]
+```
+
+`seedRandom(seed, true)` 的第二个参数 `true` 表示 timeless mode，确保每帧返回相同值。
+
+**Scale 表达式（随机大小）：**
+
+```javascript
+seedRandom(pSeed + ci + 9999, true);
+minS = pMinScale / 100;
+maxS = pMaxScale / 100;
+s = random(minS, maxS);
+[s, s]
+```
+
+使用 `+ 9999` 作为种子偏移，使大小随机分布**独立于**位置随机分布。
+
+**版本对比：**
+
+| 版本 | 效果 | 表达式 |
+|------|------|--------|
+| v1.0 / v1.1 | 高度波浪 | `[0, sin(time * freq + ci * 0.8) * amp]` |
+| v2.0 | 散落分布 | `[random(-r, r), random(-r, r)]` + 随机 Scale |
+
 ## 架构设计
+
+### v1.x 架构（高度错落）
 
 脚本采用单文件结构：
 
@@ -193,6 +231,28 @@ hPEnd.setValue(pEnd);
        ├── 创建 入场 动画器（Opacity + Blur + Position）
        ├── 创建 出场 动画器（Opacity + Blur + Position）
        └── 创建 N 个 高度错落 动画器（逐字 Percent 锁定 + Position 表达式）
+
+### v2.0 架构（散落分布）
+
+```
+歌词逐字散落动画工具.jsx
+  ├── UI 构建（ScriptUI Panel）
+  │    ├── 入场参数（持续时间 / 模糊 / 偏移）
+  │    ├── 出场参数（开始时间 / 持续时间 / 偏移）
+  │    ├── 散落分布（散布范围 / 种子 / 最小缩放 / 最大缩放）
+  │    ├── 预设管理（存储 1-4 / 使用 1-4 / 清除全部）
+  │    └── 应用 / 清除按钮 + 状态栏
+  ├── addAnimProperty() — 安全添加属性（多候选名 fallback，含 Scale）
+  ├── clearAnimators() — 清除所有"歌词_"前缀动画器
+  ├── XMP 存储
+  │    ├── readPresets() / writePresets()
+  │    └── presetsCache（内存缓存）
+  └── applyAnimation() — 主流程（全部 keyframe 以 comp.time 偏移）
+       ├── 查找 Text Animators 组（AE 2026 备选路径）
+       ├── 创建 入场 动画器（Opacity + Blur + Position）
+       ├── 创建 出场 动画器（Opacity + Blur + Position）
+       └── 创建 N 个 散落 动画器（逐字 Percent 锁定 + Position 表达式 + Scale 表达式）
+```
 ```
 
 ## 兼容性
