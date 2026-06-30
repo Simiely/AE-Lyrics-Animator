@@ -383,59 +383,107 @@ function addAnimProperty(propsGroup, propType) {
 
 // ---- 文件存储（存储在脚本所在目录） ----
 var PRESET_FILENAME = "歌词动画预设.json";
+var XMP_MARKER = "<!--AE_Lyrics_Presets:";
 
 // 获取脚本自身所在目录的预设文件路径
 function getPresetFilePath() {
     try {
-        // $.fileName 是当前脚本的完整路径，始终可用
         var scriptFile = new File($.fileName);
-        if (!scriptFile.exists) {
-            // 回退：用户桌面
-            return new File(Folder.desktop.fsName + "/" + PRESET_FILENAME);
+        if (scriptFile.exists) {
+            return new File(scriptFile.parent.fsName + "/" + PRESET_FILENAME);
         }
-        var scriptFolder = scriptFile.parent;
-        return new File(scriptFolder.fsName + "/" + PRESET_FILENAME);
-    } catch (ex) {
-        try {
-            return new File(Folder.desktop.fsName + "/" + PRESET_FILENAME);
-        } catch (e) { return null; }
-    }
+    } catch (ex) {}
+    try {
+        return new File(Folder.desktop.fsName + "/" + PRESET_FILENAME);
+    } catch (e) { return null; }
 }
 
-// 读取预设
+// 读取预设：优先 JSON 文件，回退 XMP
 function readPresets() {
+    // 1. 尝试从 JSON 文件读取
     try {
         var f = getPresetFilePath();
-        if (!f || !f.exists) return {};
-        if (!f.open("r")) return {};
-        var text = f.read();
-        f.close();
-        if (!text || text.length === 0) return {};
-        var parsed = JSON.parse(text);
-        return (parsed && typeof parsed === "object") ? parsed : {};
-    } catch (ex) {
-        return {};
-    }
+        if (f && f.exists) {
+            f.open("r");
+            var text = f.read();
+            f.close();
+            if (text && text.length > 0) {
+                var parsed = JSON.parse(text);
+                if (parsed && typeof parsed === "object") return parsed;
+            }
+        }
+    } catch (ex) {}
+
+    // 2. 回退：从 XMP 读取（兼容旧版本保存的预设）
+    try {
+        var xmp = app.project.xmpPacket;
+        if (xmp) {
+            var s = xmp.indexOf(XMP_MARKER);
+            if (s >= 0) {
+                var d = s + XMP_MARKER.length;
+                var e = xmp.indexOf("-->", d);
+                if (e > d) {
+                    return JSON.parse(xmp.substring(d, e));
+                }
+            }
+        }
+    } catch (ex) {}
+
+    return {};
 }
 
-// 写入预设
+// 写入预设：优先 JSON 文件，失败回退 XMP
 function writePresets(data) {
-    var content = JSON.stringify(data, null, 2);
+    // 1. 尝试写入 JSON 文件
     try {
         var f = getPresetFilePath();
-        if (!f) { alert("无法确定预设文件路径"); return false; }
-        // 确保父目录存在
-        var dir = f.parent;
-        if (dir && !dir.exists) { dir.create(); }
-        // 打开写入
-        if (!f.open("w")) { alert("无法打开预设文件写入:\n" + f.fsName + "\n\n请检查 AE 偏好设置:\n编辑 → 首选项 → 脚本和表达式 → 允许脚本写入文件和访问网络"); return false; }
-        // 写入内容
-        var ok = f.write(content);
-        f.close();
-        if (!ok) { alert("写入预设文件失败:\n" + f.fsName); return false; }
+        if (f) {
+            var dir = f.parent;
+            if (dir && !dir.exists) { dir.create(); }
+
+            // 删除旧文件
+            if (f.exists) { f.remove(); }
+
+            // 写入
+            var opened = f.open("w");
+            if (opened) {
+                // 使用不带缩进的 stringify，避免 ExtendScript 兼容问题
+                var content = JSON.stringify(data);
+                var wrote = f.write(content);
+                f.close();
+
+                if (wrote && content && content.length > 0) {
+                    // 验证：读回检查
+                    f.open("r");
+                    var verify = f.read();
+                    f.close();
+                    if (verify && verify.length > 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+    } catch (ex) {
+        $.writeln("JSON 文件写入异常: " + ex.toString());
+    }
+
+    // 2. 回退：写入 XMP
+    try {
+        var content = JSON.stringify(data);
+        var tag = XMP_MARKER + content + "-->";
+        var xmp = app.project.xmpPacket || "";
+        var s = xmp.indexOf(XMP_MARKER);
+        if (s >= 0) {
+            var e = xmp.indexOf("-->", s);
+            xmp = xmp.substring(0, s) + tag + (e >= 0 ? xmp.substring(e + 3) : "");
+        } else {
+            var pe = xmp.indexOf('<?xpacket end');
+            xmp = pe >= 0 ? xmp.substring(0, pe) + tag + "\n" + xmp.substring(pe) : xmp + "\n" + tag;
+        }
+        app.project.xmpPacket = xmp;
         return true;
     } catch (ex) {
-        alert("写入预设文件异常:\n" + ex.toString());
+        alert("预设保存完全失败:\n" + ex.toString() + "\n\n请检查 AE 偏好设置:\n编辑 → 首选项 → 脚本和表达式 → 允许脚本写入文件和访问网络");
         return false;
     }
 }
