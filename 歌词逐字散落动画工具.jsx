@@ -382,6 +382,42 @@ function addAnimProperty(propsGroup, propType) {
 }
 
 // ---- 预设存储（双层：工程目录 JSON + app.settings 全局保底） ----
+
+// JSON polyfill（ExtendScript 可能没有内置 JSON 对象）
+if (typeof JSON === "undefined") { JSON = {}; }
+if (typeof JSON.stringify !== "function") {
+    JSON.stringify = function(obj) {
+        var t = typeof obj;
+        if (t === "undefined") return undefined;
+        if (t === "function" || obj === null) return "null";
+        if (t === "boolean" || t === "number") return String(obj);
+        if (t === "string") return '"' + obj.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t") + '"';
+        if (obj instanceof Array) {
+            var arr = [];
+            for (var i = 0; i < obj.length; i++) { arr.push(JSON.stringify(obj[i])); }
+            return "[" + arr.join(",") + "]";
+        }
+        if (t === "object") {
+            var pairs = [];
+            for (var k in obj) {
+                if (obj.hasOwnProperty(k)) {
+                    var v = JSON.stringify(obj[k]);
+                    if (v !== undefined) pairs.push('"' + k + '":' + v);
+                }
+            }
+            return "{" + pairs.join(",") + "}";
+        }
+        return "null";
+    };
+}
+if (typeof JSON.parse !== "function") {
+    JSON.parse = function(text) {
+        // 简易解析：用 eval（ExtendScript 环境安全）
+        if (typeof text !== "string" || text.length === 0) return null;
+        return eval("(" + text + ")");
+    };
+}
+
 var SETTINGS_SECTION = "AE_Lyrics_Anim";
 var SETTINGS_KEY_PREFIX = "preset_";
 var PRESET_FILENAME = "歌词动画预设.json";
