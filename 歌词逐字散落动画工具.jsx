@@ -17,8 +17,7 @@ pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 4;
 pal.margins = [8, 8, 8, 8];
-pal.minimumSize = [280, 400];
-pal.preferredSize = [280, 560];
+// 移除固定 minimumSize/preferredSize，让布局自动计算尺寸，避免初始尺寸错误导致阴影偏移
 
 // 标题
 var titleGrp = pal.add("group");
@@ -382,8 +381,8 @@ function getPresetFilePath() {
         if (!projFile) return null;
         var projFolder = projFile.parent;
         if (!projFolder) return null;
-        // 用 absoluteURI 避免路径分隔符问题
-        var f = new File(projFolder.absoluteURI + "/" + PRESET_FILENAME);
+        // fsName 返回平台原生路径，比 absoluteURI 更可靠
+        var f = new File(projFolder.fsName + "/" + PRESET_FILENAME);
         return f;
     } catch (ex) { return null; }
 }
@@ -416,17 +415,21 @@ function writePresets(data) {
     try {
         var f = getPresetFilePath();
         if (f) {
-            // encoding 必须在 open 之前设置
+            // 确保父文件夹存在
+            var parentFolder = f.parent;
+            if (!parentFolder.exists) {
+                parentFolder.create();
+            }
+            // 按 Adobe 社区推荐: encoding 在 open 之前设置
             f.encoding = "UTF-8";
             f.lineFeed = "Unix";
-            var ok = f.open("w");
-            if (ok) {
-                f.write(JSON.stringify(data, null, 2));
-                f.close();
-                return;
-            } else {
-                $.writeln("写入预设文件失败: " + f.fsName);
-            }
+            f.open("w");
+            f.write(JSON.stringify(data, null, 2));
+            f.close();
+            $.writeln("预设已写入: " + f.fsName);
+            return;
+        } else {
+            $.writeln("getPresetFilePath 返回 null (工程未保存?)");
         }
     } catch (ex) {
         $.writeln("写入预设文件异常: " + ex.toString());
@@ -1052,9 +1055,8 @@ applyBtn.onClick = function() { applyAnimation(); };
 clearBtn.onClick = function() { clearAnimators(); };
 
 // ---- 打开/刷新面板 ----
-// 先计算布局、设置窗口尺寸，再显示，避免 Windows 阴影因窗口尺寸错误而偏离
+// 先 layout 再 show，避免 Windows 阴影偏移
 pal.layout.layout(true);
-pal.size = pal.preferredSize;
 if (pal instanceof Window) {
     pal.center();
     pal.show();
