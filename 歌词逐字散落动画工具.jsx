@@ -350,7 +350,7 @@ function addAnimProperty(propsGroup, propType) {
     else if (propType === "ADBE Text Position") candidates = ["ADBE Text Position", "ADBE Text Position 2D", "ADBE Text Position 3D", "Position", "位置"];
     else if (propType === "ADBE Text Opacity") candidates = ["ADBE Text Opacity", "ADBE Text Opacity Percent", "Opacity", "不透明度"];
     else if (propType === "ADBE Text Scale") candidates = ["ADBE Text Scale", "ADBE Text Scale 3D", "Scale", "缩放"];
-    else if (propType === "ADBE Text Tracking Amount") candidates = ["ADBE Text Tracking Amount", "ADBE Text Tracking", "Tracking", "Tracking Amount", "字间距", "跟踪"];
+    else if (propType === "ADBE Text Tracking Amount") candidates = ["ADBE Text Tracking Amount", "ADBE Text Tracking"];
 
     if (propsGroup.addProperty) {
         for (var ai = 0; ai < candidates.length; ai++) {
