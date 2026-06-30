@@ -381,7 +381,8 @@ function getPresetFilePath() {
         if (!projFile) return null;
         var projFolder = projFile.parent;
         if (!projFolder) return null;
-        var f = new File(projFolder.fsName + "/" + PRESET_FILENAME);
+        // 用 absoluteURI 避免路径分隔符问题
+        var f = new File(projFolder.absoluteURI + "/" + PRESET_FILENAME);
         return f;
     } catch (ex) { return null; }
 }
@@ -413,12 +414,19 @@ function writePresets(data) {
     try {
         var f = getPresetFilePath();
         if (f) {
-            f.open("w");
-            f.write(JSON.stringify(data, null, 2));
-            f.close();
-            return;
+            var ok = f.open("w");
+            if (ok) {
+                f.encoding = "UTF-8";
+                f.write(JSON.stringify(data, null, 2));
+                f.close();
+                return;
+            } else {
+                $.writeln("写入预设文件失败: " + f.fsName);
+            }
         }
-    } catch (ex) {}
+    } catch (ex) {
+        $.writeln("写入预设文件异常: " + ex.toString());
+    }
     // 无工程文件时回退到 XMP
     try {
         var XMP_MARKER = "<!--AE_Lyrics_Presets:";
@@ -460,7 +468,9 @@ function saveSlot(idx) {
     presetsCache[String(idx)] = params;
     writePresets(presetsCache);
     updateLoadButtons();
-    setStatus("已保存到预设 " + idx);
+    var f = getPresetFilePath();
+    var loc = f ? f.fsName : "未保存的工程";
+    setStatus("已保存到预设 " + idx + " (" + loc + ")");
 }
 
 function loadSlot(idx) {
