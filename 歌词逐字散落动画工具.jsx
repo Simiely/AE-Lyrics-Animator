@@ -1,5 +1,5 @@
 // ============================================================
-// 歌词逐字散落动画工具  v3.4  —  for After Effects 2026
+// 歌词逐字散落动画工具  v3.5  —  for After Effects 2026
 // ============================================================
 // 功能：选中文本图层后，自动生成逐字动画
 // - 入场方向可选（左/右/上/下），逐字/一起模式
@@ -9,7 +9,8 @@
 // - 字间距动态（初始→结束字间距线性变化）
 // - 每个功能面板有独立总开关，可单独启用/关闭
 // - 所有参数可调
-// - 预设存储/加载（JSON 文件持久化，存于 .aep 同级目录）
+// - 预设存储/加载（双层持久化：工程目录 JSON + app.settings 全局保底）
+// - 代码模块化重构，UI 工厂函数 + 动画子函数拆分
 // ============================================================
 
 (function(thisObj) {
@@ -71,7 +72,7 @@ function addEnableCheckbox(parent, label, defaultVal) {
 }
 
 // ---- 构建面板 ----
-var pal = (thisObj instanceof Panel) ? thisObj : new Window("palette", "歌词逐字散落动画工具 v3.4", undefined, {resizeable: true});
+var pal = (thisObj instanceof Panel) ? thisObj : new Window("palette", "歌词逐字散落动画工具 v3.5", undefined, {resizeable: true});
 pal.orientation = "column";
 pal.alignChildren = ["fill", "top"];
 pal.spacing = 4;
@@ -1148,7 +1149,7 @@ function applyAnimation() {
         if (params.spacingEnbl) parts.push("字间距" + params.spacingStartVal + "→" + params.spacingEndVal);
         var msg = parts.length > 0 ? parts.join(" ") : "无动画（全部关闭）";
         setStatus("完成! " + msg);
-        $.writeln("歌词散落动画v3.4已应用成功: " + msg);
+        $.writeln("歌词散落动画v3.5已应用成功: " + msg);
 
     } catch (err) {
         var errLine = err.line || err.lineNumber || "?";

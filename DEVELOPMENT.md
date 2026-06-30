@@ -4,6 +4,8 @@
 
 本项目是一个针对 Adobe After Effects 2026 中文版的歌词逐字动画工具脚本。开发过程中遇到了多个 AE API 跨版本兼容性问题，记录了解决方案。
 
+当前版本：**v3.5**，约 1174 行，单文件 IIFE 结构。
+
 ## 关键技术节点
 
 ### 1. AE 2026 中文版的 API 差异
@@ -24,7 +26,7 @@ if (propType === "ADBE Text Position") candidates = [
 
 **问题：** 标准 AE 文档中，Text Animators 作为图层的直接子属性访问（`layer.property("ADBE Text Animators")`）。但在 AE 2026 中文版中，Text Animators 位于 `ADBE Text Properties` 内部。
 
-**解决方案：** 增加备选路径查找：
+**解决方案：** 增加备选路径查找（`findAnimatorsGroup()` 函数）：
 
 ```javascript
 var animatorsGroup = layer.property("ADBE Text Animators");
@@ -52,12 +54,12 @@ if (!animatorsGroup) {
 
 ### 5. 3D 属性值类型
 
-**问题：** Position 属性在某些版本中是 3D 属性（`propertyValueType === 6413`），需要传 3 个值 `[x, y, z]`，而普通 2D 属性只需要 `[x, y]`。
+**问题：** Position 属性在某些版本中是 3D 属性，需要传 3 个值 `[x, y, z]`，而普通 2D 属性只需要 `[x, y]`。
 
-**解决方案：** 检测 `propertyValueType` 动态适配：
+**解决方案：** 检测 `propertyValueType` 动态适配（v3.5 改用 `PropertyValueType.ThreeD` 常量替代魔法数字）：
 
 ```javascript
-if (pType === 6413) { // ThreeD
+if (pType === PropertyValueType.ThreeD) {
     entryPosProp.setValue([-pEntryOff, 0, 0]);
 } else {
     entryPosProp.setValue([-pEntryOff, 0]);
@@ -67,11 +69,6 @@ if (pType === 6413) { // ThreeD
 ### 6. textIndex 表达式变量不可用
 
 **问题：** AE 中标准表达式变量 `textIndex`（返回当前字符在文本中的序号）在 AE 2026 中提示未定义。所有使用该变量的表达式被禁用。
-
-**尝试过的方案：**
-- 直接使用 `textIndex` — ReferenceError
-- `typeof textIndex !== 'undefined'` 保护 — 始终为 undefined
-- 使用 `textTotal` — 同样未定义
 
 **最终方案：** 放弃表达式层的索引获取，改为**每个字符独立建一个文字动画器**，每个动画器的 Range Selector 锁定到单个字符（Percent 模式），Position 表达式中直接硬编码字符索引作为相位偏移：
 
@@ -91,8 +88,6 @@ if (pType === 6413) { // ThreeD
 ### 8. 逐字独立动画器方案（替代 textIndex）
 
 **问题：** `textIndex` 表达式变量在 AE 2026 中不可用，无法在表达式中获取当前字符索引来创建独立的相位偏移。
-
-**早期方案：** 单动画器 + Range Selector 扫描 + 时间基表达式 → 所有字符一起浮动，无法错落。
 
 **最终方案：** 每个字符独立创建一个文字动画器，通过 Range Selector 锁定到单个字符：
 
@@ -123,30 +118,41 @@ var k2 = entryStartProp.addKey(startTime + pEntryDur / pSpeed);
 entryStartProp.setValueAtKey(k2, 100);
 ```
 
-受影响的 6 处关键帧：
-- 入场 Start：`startTime` → `startTime + 入场持续时间`
-- 出场 Start：`startTime + 出场开始` → `startTime + 出场结束`
-- 高度 Index 锁定：`startTime`
+### 10. 预设存储与持久化（v3.5 重写）
 
-### 10. 预设存储与持久化
+**需求：** 用户保存的预设参数应随工程文件保存，换电脑打开仍可保留。同时不依赖工程保存操作。
 
-**需求：** 用户保存的预设参数应随工程文件保存，换电脑打开仍可保留。
+**v3.5 双层存储方案：**
 
-**方案：** 利用 `app.project.xmpPacket`（AE 工程的 XMP 元数据），用 XML 注释格式嵌入 JSON：
+| 层级 | 存储方式 | 特点 |
+|------|----------|------|
+| 工程目录 JSON | `.aep` 同级目录 `歌词动画预设.json` | 跟工程走，不同工程独立 |
+| 全局保底 | `app.settings`（AE 偏好） | 不依赖工程，随时可用 |
+
+读取时优先读工程目录 JSON，不存在则回退到全局设置。
+
+**关键踩坑：ExtendScript 无 JSON 对象**
+
+v3.4 及之前使用 `app.project.xmpPacket` 存储，v3.5 改为文件存储后遇到空文件问题。根因是 ExtendScript 引擎没有内置 `JSON` 对象，`JSON.stringify()` 直接报 `ReferenceError: "JSON" is not defined`。
+
+**解决方案：** 在存储模块前注入 JSON polyfill：
 
 ```javascript
-<!--AE_Lyrics_Presets:{"1":{"d":"2.0","b":"40",...},"2":{...}}-->
+if (typeof JSON === "undefined") { JSON = {}; }
+if (typeof JSON.stringify !== "function") {
+    JSON.stringify = function(obj) {
+        // 手动实现序列化，支持 string/number/boolean/array/object
+        // ...
+    };
+}
+if (typeof JSON.parse !== "function") {
+    JSON.parse = function(text) {
+        return eval("(" + text + ")");  // ExtendScript 环境安全
+    };
+}
 ```
 
-**双缓存策略：**
-
-```
-保存 → 更新内存缓存 presetsCache → 异步写入 XMP（工程文件）
-加载 → 直接从 presetsCache 读取（不依赖 XMP 回读）
-初始化 → 从 XMP 读取到 presetsCache → 更新按钮状态
-```
-
-这种设计确保即使 XMP 写入失败（如无工程文件时），面板内功能依然正常。
+这个 polyfill 同时服务于工程 JSON 和 `app.settings` 两层存储。
 
 ### 11. v1.1 修复：波浪效果失效（Index → Percent 回退）
 
@@ -167,20 +173,15 @@ hPStart.setValue(pStart);
 hPEnd.setValue(pEnd);
 ```
 
-**验证：** 对于 N 个字符的文本，每个字符获得 `100/N` 的百分比区间，AE 内部按字符均匀分配，不存在精度不足的问题。
-
-**经验教训：** Index 模式需要额外设置 Selector 的 Units 属性（matchName 为 `ADBE Text Selector Units`），且在不同 AE 版本中兼容性更差。Percent 模式在所有版本中稳定可靠。
+**经验教训：** Index 模式需要额外设置 Selector 的 Units 属性，且在不同 AE 版本中兼容性更差。Percent 模式在所有版本中稳定可靠。
 
 ### 12. v2.0 散落分布：seedRandom + 逐字独立动画器
 
 **需求：** 将每个字符随机散布在画面上，且大小不一，同时支持种子参数保证可复现性。
 
-**实现方案：** 复用逐字独立动画器框架，每个字符一个动画器，Percent Range Selector 锁定单个字符。
-
 **Position 表达式（随机位置）：**
 
 ```javascript
-// ci = 字符索引, pSeed = 用户种子
 seedRandom(pSeed + ci, true);
 r = pScatterRange;
 [random(-r, r), random(-r, r)]
@@ -192,101 +193,17 @@ r = pScatterRange;
 
 ```javascript
 seedRandom(pSeed + ci + 9999, true);
-s = random(pMinScale, pMaxScale);  // 直接传百分比，如 50~200 表示 50%~200%
+s = random(pMinScale, pMaxScale);
 [s, s]
 ```
 
-> ⚠️ **踩坑记录：** 初始版本错误地写了 `random(pMinScale / 100, pMaxScale / 100)`，返回 `[0.5, 0.5]`。但 **AE 的 Scale 属性值本身就是百分比**，`[0.5, 0.5]` 被理解为 0.5%，导致字符极小。修复后直接传入原始百分比值。
+> ⚠️ **踩坑记录：** AE 的 Scale 属性值本身就是百分比，直接传入原始百分比值，不要除以 100。
 
 使用 `+ 9999` 作为种子偏移，使大小随机分布**独立于**位置随机分布。
 
-**版本对比：**
-
-| 版本 | 效果 | 表达式 |
-|------|------|--------|
-| v1.0 / v1.1 | 高度波浪 | `[0, sin(time * freq + ci * 0.8) * amp]` |
-| v2.0 | 散落分布 | `[random(-r, r), random(-r, r)]` + 随机 Scale |
-
-## 架构设计
-
-### v1.x 架构（高度错落）
-
-脚本采用单文件结构：
-
-```
-歌词逐字动画工具.jsx
-  ├── UI 构建（ScriptUI Panel）
-  │    ├── 入场参数（持续时间 / 模糊 / 偏移）
-  │    ├── 出场参数（开始时间 / 持续时间 / 偏移）
-  │    ├── 高度错落（幅度 / 频率 / 速度）
-  │    ├── 预设管理（存储 1-4 / 使用 1-4 / 清除全部）
-  │    └── 应用 / 清除按钮 + 状态栏
-  ├── addAnimProperty() — 安全添加属性（多候选名 fallback）
-  ├── clearAnimators() — 清除所有"歌词_"前缀动画器
-  ├── XMP 存储
-  │    ├── readPresets() / writePresets()
-  │    └── presetsCache（内存缓存）
-  └── applyAnimation() — 主流程（全部 keyframe 以 comp.time 偏移）
-       ├── 查找 Text Animators 组（AE 2026 备选路径）
-       ├── 创建 入场 动画器（Opacity + Blur + Position）
-       ├── 创建 出场 动画器（Opacity + Blur + Position）
-       └── 创建 N 个 高度错落 动画器（逐字 Percent 锁定 + Position 表达式）
-
-### v2.0 架构（散落分布）
-
-```
-歌词逐字散落动画工具.jsx
-  ├── UI 构建（ScriptUI Panel）
-  │    ├── 入场参数（持续时间 / 模糊 / 偏移）
-  │    ├── 出场参数（开始时间 / 持续时间 / 偏移）
-  │    ├── 高度错落（幅度 / 频率 / 速度）
-  │    ├── 散落分布（散布范围 / 种子 / 最小缩放 / 最大缩放）
-  │    ├── 预设管理（存储 1-4 / 使用 1-4 / 清除全部）
-  │    └── 应用 / 清除按钮 + 状态栏
-  ├── addAnimProperty() — 安全添加属性（多候选名 fallback，含 Scale）
-  ├── clearAnimators() — 清除所有"歌词_"前缀动画器
-  ├── XMP 存储
-  │    ├── readPresets() / writePresets()
-  │    └── presetsCache（内存缓存）
-  └── applyAnimation() — 主流程（全部 keyframe 以 comp.time 偏移）
-       ├── 查找 Text Animators 组（AE 2026 备选路径）
-       ├── 创建 入场 动画器（Opacity + Blur + Position）
-       ├── 创建 出场 动画器（Opacity + Blur + Position）
-       ├── 创建 N 个 散落 动画器（Position + Scale 随机表达式）
-       └── 创建 N 个 高度 动画器（Position Y 正弦表达式）
-
-### v3.0 架构（方向选择 + 随机模糊 + 时间控制）
-
-```
-歌词逐字散落动画工具.jsx
-  ├── UI 构建（ScriptUI Panel）
-  │    ├── 入场参数（持续时间 / 模糊 / 偏移 / **方向下拉框**）
-  │    ├── 出场参数（开始时间 / 持续时间 / 偏移）— 方向联动
-  │    ├── 高度错落（幅度 / 频率 / 速度）
-  │    ├── 散落分布（散布范围 / 种子 / **散落开始 / 散落过渡** / 最小缩放 / 最大缩放）
-  │    ├── 随机模糊（**模糊种子 / 模糊概率 / 最小模糊 / 最大模糊**）
-  │    ├── 预设管理（存储 1-4 / 使用 1-4 / 清除全部）
-  │    └── 应用 / 清除按钮 + 状态栏
-  ├── addAnimProperty() — 安全添加属性（多候选名 fallback，含 Scale）
-  ├── clearAnimators() — 清除所有"歌词_"前缀动画器
-  ├── XMP 存储
-  │    ├── readPresets() / writePresets() — 新增 5 个字段
-  │    └── presetsCache（内存缓存）
-  └── applyAnimation() — 主流程（全部 keyframe 以 comp.time 偏移）
-       ├── 查找 Text Animators 组（AE 2026 备选路径）
-       ├── 创建 入场 动画器（Opacity + Blur + **方向 Position**）
-       ├── 创建 出场 动画器（Opacity + Blur + **方向 Position 对称**）
-       ├── 创建 N 个 散落 动画器（Position **渐入** + Scale **渐入** + **随机 Blur**）
-       └── 创建 N 个 高度 动画器（Position Y 正弦表达式）
-```
-
----
-
 ### 13. v3.0 入场/出场方向选择
 
-**需求：** 支持文字从横向（左↔右）或竖向（上↔下）出现和消失。
-
-**实现：** UI 增加 `dropdownlist`，4 个选项对应 4 种方向。入场 Position 初始值和出场 Position 最终值根据方向计算：
+**实现：** UI 增加 `dropdownlist`，4 个选项对应 4 种方向：
 
 | 方向索引 | 方向 | 入场 Position | 出场 Position |
 |---------|------|-------------|-------------|
@@ -295,18 +212,15 @@ s = random(pMinScale, pMaxScale);  // 直接传百分比，如 50~200 表示 50%
 | 2 | 从上到下 | `[0, -offset]` | `[0, +offset]` |
 | 3 | 从下到上 | `[0, +offset]` | `[0, -offset]` |
 
-3D 属性值类型（`propertyValueType === 6413`）时第三维填 0。
+v3.5 中 `getDirectionPos(offset, direction, is3D, isExit)` 统一处理入场和出场（`isExit` 取反）。
 
-### 14. v3.0 散落时间控制（修复"散布范围控不住"）
+### 14. v3.0 散落时间控制
 
-**问题根因：** v2.0 散落 Position 表达式是恒定的随机偏移 `[random(-r,r), random(-r,r)]`，从第 0 帧就完全生效。当入场动画也在用 Position 偏移时，两个 Animator 的 Position 值叠加，导致：
-- 散落效果与入场动画同时存在，视觉上不可控
-- 用户调整散布范围参数，但入场 Position 也在同时作用，效果被稀释
+**问题根因：** v2.0 散落 Position 表达式是恒定的随机偏移，从第 0 帧就完全生效，与入场动画的 Position 叠加导致不可控。
 
-**解决方案：** 散落 Position 和 Scale 表达式增加基于时间的**渐入因子** `fade`：
+**解决方案：** 增加 `fade` 渐入因子：
 
 ```javascript
-// 改进后的 Position 表达式
 seedRandom(pSeed + ci, true);
 r = pScatterRange;
 t = time - startTime;
@@ -314,85 +228,296 @@ fade = linear(t, scatterStart, scatterStart + scatterTrans, 0, 1);
 [random(-r, r) * fade, random(-r, r) * fade]
 ```
 
-- `scatterStart`：散落开始时间（绝对时间），建议 ≥ 入场持续时间
-- `scatterTrans`：散落过渡时间，控制从无到完全散开的渐变时长
-- `fade`：使用 AE `linear()` 函数，0→1 线性渐变
-
-Scale 同样增加渐入，从 100% 渐变到目标值：
-```javascript
-base = 100;
-[base + (s - base) * fade, base + (s - base) * fade]
-```
+v3.5 中 `buildScatterFadeExpr()` 函数封装了这段公共片段。
 
 ### 15. v3.0 随机模糊效果
 
-**需求：** 基于随机种子，让部分文字模糊、部分清晰，增加视觉层次感。
-
-**实现：** 在散落 Animator 中为每个字符添加 Blur 属性，表达式逻辑：
+**实现：** 在散落 Animator 中为每个字符添加 Blur 属性：
 
 ```javascript
 seedRandom(blurSeed + ci, true);
 r = random(0, 100);
 if (r < blurProb) {
-    seedRandom(blurSeed + ci + 5555, true);  // 独立种子
-    random(minBlur, maxBlur) * fade;          // 带渐入的模糊值
+    seedRandom(blurSeed + ci + 5555, true);
+    random(minBlur, maxBlur) * fade;
 } else {
-    0;  // 不模糊
+    0;
 }
 ```
 
-关键设计：
-- 第一层 `seedRandom` 决定"是否模糊"（概率判断）
-- 第二层 `seedRandom`（偏移 5555）独立决定"模糊多少"
-- 模糊值也受 `fade` 渐入因子控制，与散落同步过渡
-- `blurProb = 0` 时完全关闭随机模糊
+两层 `seedRandom`：第一层决定"是否模糊"，第二层独立决定"模糊多少"。
 
-**预设兼容性：** 新增 5 个字段（dir, ss, st, bs, bp, bmin, bmax），旧预设缺失时使用合理默认值。
+### 16. v3.2 入场/出场模式 + 面板总开关
 
----
+- **逐字模式：** Range Selector Start 关键帧扫描（0→100），配合 Opacity/Blur/Position 静态值
+- **一起模式：** Range Selector 覆盖全部字符，Opacity/Blur/Position 用关键帧驱动
+- 每个面板新增 `checkbox` 总开关，取消勾选跳过该动画器生成
 
-### 16. v3.1 入场/出场模式：逐字 vs 一起
-
-**需求：** 支持文字逐字出现/消失，或整段一起出现/消失。
-
-**逐字模式（默认）：** Range Selector Start 关键帧扫描（0→100 或 100→0），配合 Opacity/Blur/Position 静态值。
-
-**一起模式：** Range Selector 覆盖全部字符，Opacity/Blur/Position 用关键帧驱动整段文字统一动画。
-
-### 17. v3.1 面板独立总开关
-
-每个功能面板新增 `checkbox` 总开关，取消勾选跳过该动画器生成。灵活组合（如只要散落+波浪，关闭入场出场）。
-
-### 18. v3.2 UI 迭代与 v3.3 最终布局
-
-**v3.2 经历多次 UI 调整**，最终在 v3.3 稳定：
+### 17. v3.3 UI 布局稳定
 
 | 元素 | 宽度 | 说明 |
 |------|------|------|
 | 标签 | 110px | 中文标签完整显示 |
 | 输入框 | `["fill","center"]` | 双轴 fill 撑满剩余空间 |
 | 下拉菜单 | 100px | 选项文字完整 |
-| 时间提示 | 80px | 半角括号 `(绝对时间)` |
-| 按钮 | 130px × 2 | 间距 20px，380px 内一行放下 |
 
 **关键发现：**
-- AE dockable Panel 宽度由 AE 主 UI 控制（约 380px），脚本无法改变。`minimumSize`/`maximumSize`/`preferredSize` 在 Panel 模式下不影响实际面板宽度。
-- edittext `alignment = "fill"` 单字符串在 row 容器中只作用垂直轴，必须用 `["fill", "center"]` 双轴格式才能在水平方向撑满。
-- 面板 `alignChildren = "fill"` + 行 group `alignChildren = "fill"` 形成三层 fill 体系，确保输入框自动适应面板宽度。
+- AE dockable Panel 宽度由 AE 主 UI 控制，`minimumSize`/`preferredSize` 在 Panel 模式下不影响实际面板宽度
+- edittext `alignment = "fill"` 单字符串只作用垂直轴，必须用 `["fill", "center"]` 双轴格式
+
+### 18. v3.4 代码重构
+
+1. `clearAnimators()` 复用 `findAnimatorsGroup()`
+2. 提取 `setBlurValue()` / `setBlurValueAtKey()`（v3.5 合并为 `setBlur(prop, val, key)`）
+3. 循环变量重命名避免混淆
+4. 出场模糊变量语义修正
 
 ---
 
-### 19. v3.4 代码重构
+## v3.5 重大更新
 
-**目标：** 消除重复代码，提高可维护性。
+### 19. 字间距动态效果
 
-**改动：**
-1. `clearAnimators()` 复用 `findAnimatorsGroup()` — 去掉 13 行重复的 Animators 组查找逻辑
-2. 提取 `setBlurValue(prop, val)` 和 `setBlurValueAtKey(prop, key, val)` — 封装 2D/1D 类型判断，入场/出场 Blur 设置从各 20+ 行缩到 8 行
-3. `addAnimProperty()` 循环变量 `ci` → `ai` — 避免与外层散落/高度循环的 `ci` 混淆
-4. 出场模糊变量 `pEntryBlur` → `pExitBlur` — 语义正确
+**需求：** 支持初始→结束字间距线性变化，逐字独立控制。
 
-**效果：** 净减少 32 行（966→934），无功能变更。
+**实现：** 每个 Animator 使用 `ADBE Text Tracking Amount` 属性，表达式：
+
+```javascript
+linear(t, startTime, startTime + duration, startVal, endVal) * 0.1
+```
+
+**踩坑：字间距值缩放**
+
+AE 中 Tracking Amount 的单位是 1/1000 em，与字符面板的字间距值单位一致。但实测发现填入 50 的效果约等于面板填入 500。
+
+**解决方案：** 表达式末尾 `* 0.1`，使面板填入 50 对应实际 Tracking Amount 值 5。
+
+### 20. 代码模块化重构
+
+**目标：** 消除 v3.4 遗留的复制粘贴式代码，提高可维护性。
+
+#### 20.1 集中默认值 `DEFAULTS`
+
+```javascript
+var DEFAULTS = {
+    entryDur: "2.0", entryBlur: "40", entryOffset: "80",
+    // ... 全部 25 个参数
+};
+```
+
+UI 初始化、`loadSlot`、`resetParams` 三处统一引用，消除硬编码同步风险。
+
+#### 20.2 UI 工厂函数
+
+| 函数 | 用途 | 消除重复 |
+|------|------|----------|
+| `createParamPanel(parent, title)` | 创建参数面板 | 5 处 |
+| `addParamRow(parent, label, defaultVal)` | 创建参数行 | ~15 处 |
+| `addDropdownRow(parent, label, items, selIndex)` | 创建下拉框行 | 4 处 |
+| `addEnableCheckbox(parent, label, defaultVal)` | 创建总开关 | 5 处 |
+
+#### 20.3 拆分 `applyAnimation`
+
+从 356 行拆为 7 个子函数：
+
+| 子函数 | 职责 |
+|--------|------|
+| `readAnimParams()` | 读取所有 UI 参数 → params 对象 |
+| `applyEntryAnim(params, group, startTime)` | 入场 Animator |
+| `applyExitAnim(params, group, startTime)` | 出场 Animator |
+| `applyScatterAnim(params, group, startTime, textLen)` | 散落分布 |
+| `applyHeightAnim(params, group, textLen)` | 高度错落 |
+| `applySpacingAnim(params, group, startTime, textLen)` | 字间距动态 |
+| `applyAnimation()` | 主函数：校验 → 清除 → 调度子函数 → 状态汇总（约 85 行） |
+
+#### 20.4 合并重复辅助函数
+
+| 合并前 | 合并后 |
+|--------|--------|
+| `setBlurValue` + `setBlurValueAtKey` | `setBlur(prop, val, key)` |
+| `getDirectionPos` + `getExitDirectionPos` | `getDirectionPos(offset, dir, is3D, isExit)` |
+| 清除逻辑重复 2 处 | `removeLyricsAnimators()` 统一调用 |
+
+#### 20.5 新增公共函数
+
+- `createPerCharAnimator(group, prefix, ci, textLen, propType)` — 逐字 Animator 创建骨架（散落/高度/字间距共用）
+- `buildScatterFadeExpr(seed, ci, startTime, scatterStart, scatterTrans)` — 散落表达式 fade 片段
+
+#### 20.6 其他清理
+
+- `setStatus(msg)` 移除未使用的 `isError` 参数
+- 魔法数字 `6413` → `PropertyValueType.ThreeD`
+- 表达式拼接 `+=` → `[...].join("\n")`
+
+---
+
+## 架构设计（v3.5）
+
+### 文件结构
+
+```
+歌词逐字散落动画工具.jsx（~1174 行）
+├── 文件头注释（版本说明）
+├── IIFE 包裹 (function(thisObj) { ... })(this)
+│
+├── DEFAULTS 对象（集中默认值，25 个参数）
+│
+├── UI 工厂函数
+│   ├── createParamPanel()
+│   ├── addParamRow()
+│   ├── addDropdownRow()
+│   └── addEnableCheckbox()
+│
+├── UI 构建（面板 + 5 个参数模块 + 预设管理 + 操作按钮）
+│   ├── 入场参数面板
+│   ├── 出场参数面板
+│   ├── 高度错落面板
+│   ├── 字间距动态面板
+│   ├── 散落分布面板
+│   └── 预设管理面板（存储1-4 / 使用1-4 / 清除 / 复位）
+│
+├── 基础工具函数
+│   ├── getVal(ctrl, def) — 读取数值
+│   ├── setStatus(msg) — 状态栏
+│   ├── removeLyricsAnimators(group) — 清除歌词_前缀动画器
+│   └── clearAnimators() — 清除选中图层的动画器
+│
+├── 属性兼容层
+│   └── addAnimProperty(propsGroup, propType) — 多候选名 fallback
+│
+├── JSON Polyfill（ExtendScript 无内置 JSON）
+│   ├── JSON.stringify()
+│   └── JSON.parse()
+│
+├── 存储模块（双层持久化）
+│   ├── 工程目录 JSON
+│   │   ├── getProjectPresetFile()
+│   │   ├── readFromProjectFile()
+│   │   ├── writeToProjectFile() — 带诊断信息
+│   │   └── deleteProjectFile()
+│   ├── app.settings 全局保底
+│   │   ├── readFromSettings(idx)
+│   │   ├── writeToSettings(idx, params)
+│   │   └── deleteFromSettings(idx)
+│   └── 统一接口
+│       ├── presetsCache 初始化
+│       ├── saveSlot(idx) — 同时写 JSON + settings
+│       ├── clearAllPresets()
+│       ├── updateLoadButtons()
+│       ├── loadSlot(idx)
+│       └── resetParams()
+│
+├── 动画辅助函数
+│   ├── setBlur(prop, val, key) — 兼容 2D/1D + 可选关键帧
+│   ├── getDirectionPos(offset, dir, is3D, isExit) — 方向偏移
+│   ├── findSelectorStartEnd(sel) — Selector 属性查找
+│   ├── findAnimatorProps(anim) — Animator 属性组查找
+│   ├── findAnimatorsGroup(layer) — Animators 组查找
+│   ├── getTextLen(layer) — 文本长度
+│   ├── lockCharRange(sel, ci, textLen) — 单字符 Percent 锁定
+│   ├── createPerCharAnimator(group, prefix, ci, textLen, propType) — 逐字骨架
+│   └── buildScatterFadeExpr(seed, ci, startTime, scatterStart, scatterTrans)
+│
+├── 动画核心
+│   ├── readAnimParams() — 读取所有参数 → params 对象
+│   ├── applyEntryAnim(params, group, startTime) — 入场
+│   ├── applyExitAnim(params, group, startTime) — 出场
+│   ├── applyScatterAnim(params, group, startTime, textLen) — 散落
+│   ├── applyHeightAnim(params, group, textLen) — 高度错落
+│   ├── applySpacingAnim(params, group, startTime, textLen) — 字间距
+│   └── applyAnimation() — 主函数（校验 → 清除 → 调度 → 状态汇总）
+│
+└── 入口
+    ├── 按钮绑定
+    ├── 面板布局 / resize / center / show
+    └── updateLoadButtons() 初始化
+```
+
+### 函数索引
+
+| 函数名 | 行号 | 功能 |
+|--------|------|------|
+| `createParamPanel` | 32 | 创建参数面板（工厂函数） |
+| `addParamRow` | 43 | 创建参数行（工厂函数） |
+| `addDropdownRow` | 54 | 创建下拉框行（工厂函数） |
+| `addEnableCheckbox` | 65 | 创建总开关（工厂函数） |
+| `getVal` | 265 | 从控件读取数值 |
+| `setStatus` | 270 | 设置状态栏文本 |
+| `removeLyricsAnimators` | 275 | 移除歌词_前缀动画器 |
+| `clearAnimators` | 288 | 清除选中图层动画器 |
+| `addAnimProperty` | 313 | 安全添加属性（多候选名） |
+| `getProjectPresetFile` | 385 | 获取工程目录预设文件路径 |
+| `readFromProjectFile` | 397 | 从 JSON 文件读取预设 |
+| `writeToProjectFile` | 412 | 写入预设到 JSON（带诊断） |
+| `readFromSettings` | 484 | 从 app.settings 读取 |
+| `writeToSettings` | 494 | 写入到 app.settings |
+| `saveSlot` | 527 | 保存预设（双层写入） |
+| `loadSlot` | 580 | 加载预设到 UI |
+| `resetParams` | 620 | 复位为默认值 |
+| `setBlur` | 656 | 安全设置 Blur 值（2D/1D） |
+| `getDirectionPos` | 670 | 方向偏移计算（入场/出场） |
+| `findSelectorStartEnd` | 686 | 查找 Selector Start/End |
+| `findAnimatorProps` | 697 | 查找 Animator 属性组 |
+| `findAnimatorsGroup` | 712 | 查找 Animators 组 |
+| `getTextLen` | 730 | 获取文本长度 |
+| `lockCharRange` | 741 | 锁定单字符 Percent 范围 |
+| `createPerCharAnimator` | 752 | 创建逐字 Animator 骨架 |
+| `buildScatterFadeExpr` | 766 | 散落渐入表达式片段 |
+| `readAnimParams` | 776 | 读取所有参数 |
+| `applyEntryAnim` | 820 | 入场动画器 |
+| `applyExitAnim` | 900 | 出场动画器 |
+| `applyScatterAnim` | 980 | 散落分布动画器 |
+| `applyHeightAnim` | 1035 | 高度错落动画器 |
+| `applySpacingAnim` | 1053 | 字间距动画器 |
+| `applyAnimation` | 1076 | 主函数（调度） |
+
+### Animator 命名规范
+
+所有生成的动画器以 `歌词_` 前缀命名，便于清除时识别：
+
+| Animator | 命名格式 | 示例 |
+|----------|----------|------|
+| 入场 | `歌词_入场` | `歌词_入场` |
+| 出场 | `歌词_出场` | `歌词_出场` |
+| 高度错落 | `歌词_高度_{ci}` | `歌词_高度_1`, `歌词_高度_2` |
+| 字间距 | `歌词_字间距_{ci}` | `歌词_字间距_1` |
+| 散落分布 | `歌词_散落_{ci}` | `歌词_散落_1` |
+
+### 预设数据结构
+
+存储到 JSON / app.settings 的预设对象：
+
+```javascript
+{
+    "1": {  // 槽位 1
+        "d": "2.0",       // 入场持续时间
+        "b": "40",         // 入场模糊
+        "o": "80",         // 入场偏移
+        "dir": 0,          // 入场方向
+        "emode": 0,        // 入场模式
+        "enbl": true,      // 入场启用
+        "es": "3.5",       // 出场开始时间
+        "ed": "2.0",       // 出场持续时间
+        // ... 其余字段
+        "ss1": "0",        // 字间距起始
+        "ss2": "50",       // 字间距结束
+        "ss3": "2.0",      // 字间距持续
+        "ss4": "0",        // 字间距开始时间
+        "spenbl": false,   // 字间距启用
+        // ...
+    },
+    "2": { ... },
+    "3": { ... },
+    "4": { ... }
+}
+```
+
+## 开发环境
+
+- Adobe After Effects 2026 中文版
+- Windows 系统
+- 语法检查：`node --check`（Node.js 用于 ES3 语法验证，不能运行 AE API）
+- 无构建工具，单文件部署
 
 ## 兼容性
 
@@ -401,3 +526,15 @@ if (r < blurProb) {
 - Windows 系统
 
 理论上兼容 AE CC 及以上版本（可能需要调整部分 matchName）。
+
+## 版本演进
+
+| 版本 | 核心变更 |
+|------|----------|
+| v1.0 | 高度错落（逐字波浪） |
+| v2.0 | 散落分布（随机位置 + 随机大小） |
+| v3.0 | 方向选择 + 随机模糊 + 时间控制 |
+| v3.2 | 面板总开关 + 逐字/一起模式 |
+| v3.3 | UI 布局稳定 |
+| v3.4 | 首次代码重构 |
+| v3.5 | 字间距动态 + 双层存储 + 模块化重构 |
