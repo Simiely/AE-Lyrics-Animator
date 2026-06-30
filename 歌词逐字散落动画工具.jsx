@@ -381,95 +381,66 @@ function addAnimProperty(propsGroup, propType) {
     return null;
 }
 
-// ---- 文件存储（存储在 .aep 同级目录） ----
+// ---- 文件存储（存储在脚本所在目录） ----
 var PRESET_FILENAME = "歌词动画预设.json";
 
+// 获取脚本自身所在目录的预设文件路径
 function getPresetFilePath() {
     try {
-        var projFile = app.project.file;
-        if (!projFile) return null;
-        var projFolder = projFile.parent;
-        if (!projFolder) return null;
-        // fsName 返回平台原生路径，比 absoluteURI 更可靠
-        var f = new File(projFolder.fsName + "/" + PRESET_FILENAME);
-        return f;
-    } catch (ex) { return null; }
+        // $.fileName 是当前脚本的完整路径，始终可用
+        var scriptFile = new File($.fileName);
+        if (!scriptFile.exists) {
+            // 回退：用户桌面
+            return new File(Folder.desktop.fsName + "/" + PRESET_FILENAME);
+        }
+        var scriptFolder = scriptFile.parent;
+        return new File(scriptFolder.fsName + "/" + PRESET_FILENAME);
+    } catch (ex) {
+        try {
+            return new File(Folder.desktop.fsName + "/" + PRESET_FILENAME);
+        } catch (e) { return null; }
+    }
 }
 
+// 读取预设
 function readPresets() {
     try {
         var f = getPresetFilePath();
-        if (f && f.exists) {
-            f.encoding = "UTF-8";
-            f.open("r");
-            var text = f.read();
-            f.close();
-            return JSON.parse(text);
-        }
-    } catch (ex) {}
-    // 向后兼容：尝试从 XMP 读取
-    try {
-        var XMP_MARKER = "<!--AE_Lyrics_Presets:";
-        var xmp = app.project.xmpPacket;
-        if (!xmp) return null;
-        var s = xmp.indexOf(XMP_MARKER);
-        if (s < 0) return null;
-        var d = s + XMP_MARKER.length;
-        var e = xmp.indexOf("-->", d);
-        return e < 0 ? null : JSON.parse(xmp.substring(d, e));
-    } catch (ex) { return null; }
+        if (!f || !f.exists) return {};
+        if (!f.open("r")) return {};
+        var text = f.read();
+        f.close();
+        if (!text || text.length === 0) return {};
+        var parsed = JSON.parse(text);
+        return (parsed && typeof parsed === "object") ? parsed : {};
+    } catch (ex) {
+        return {};
+    }
 }
 
+// 写入预设
 function writePresets(data) {
     var content = JSON.stringify(data, null, 2);
-    var fileWritten = false;
-
-    // 尝试写入 JSON 文件
     try {
         var f = getPresetFilePath();
-        if (f) {
-            var parentFolder = f.parent;
-            if (parentFolder && !parentFolder.exists) {
-                parentFolder.create();
-            }
-            var opened = f.open("w");
-            if (opened) {
-                var wrote = f.write(content);
-                f.close();
-                if (wrote && content.length > 0) {
-                    fileWritten = true;
-                }
-            }
-        }
+        if (!f) { alert("无法确定预设文件路径"); return false; }
+        // 确保父目录存在
+        var dir = f.parent;
+        if (dir && !dir.exists) { dir.create(); }
+        // 打开写入
+        if (!f.open("w")) { alert("无法打开预设文件写入:\n" + f.fsName + "\n\n请检查 AE 偏好设置:\n编辑 → 首选项 → 脚本和表达式 → 允许脚本写入文件和访问网络"); return false; }
+        // 写入内容
+        var ok = f.write(content);
+        f.close();
+        if (!ok) { alert("写入预设文件失败:\n" + f.fsName); return false; }
+        return true;
     } catch (ex) {
-        $.writeln("写入预设文件异常: " + ex.toString());
-    }
-
-    // 文件写入成功，直接返回
-    if (fileWritten) return;
-
-    // 文件写入失败 → 回退到 XMP
-    try {
-        var XMP_MARKER = "<!--AE_Lyrics_Presets:";
-        var tag = XMP_MARKER + content + "-->";
-        var xmp = app.project.xmpPacket || "";
-        var s = xmp.indexOf(XMP_MARKER);
-        if (s >= 0) {
-            var e = xmp.indexOf("-->", s);
-            xmp = xmp.substring(0, s) + tag + (e >= 0 ? xmp.substring(e + 3) : "");
-        } else {
-            var pe = xmp.indexOf('<?xpacket end');
-            xmp = pe >= 0 ? xmp.substring(0, pe) + tag + "\n" + xmp.substring(pe) : xmp + "\n" + tag;
-        }
-        app.project.xmpPacket = xmp;
-        // 提示用户文件写入失败
-        alert("预设已保存到工程文件 XMP（JSON 文件写入失败）。\n\n请在 AE 偏好设置中开启：\n编辑 → 首选项 → 脚本和表达式 → 允许脚本写入文件和访问网络\n\n开启后重启 AE，即可使用 JSON 文件存储。");
-    } catch (ex) {
-        alert("预设保存失败: " + ex.toString());
+        alert("写入预设文件异常:\n" + ex.toString());
+        return false;
     }
 }
 
-var presetsCache = readPresets() || {};
+var presetsCache = readPresets();
 
 function saveSlot(idx) {
     var params = {
@@ -491,11 +462,15 @@ function saveSlot(idx) {
         scnbl: scatterEnable.value
     };
     presetsCache[String(idx)] = params;
-    writePresets(presetsCache);
+    var ok = writePresets(presetsCache);
     updateLoadButtons();
     var f = getPresetFilePath();
-    var loc = f ? f.fsName : "未保存的工程";
-    setStatus("已保存到预设 " + idx + " (" + loc + ")");
+    var loc = f ? f.fsName : "未知路径";
+    if (ok) {
+        setStatus("已保存到预设 " + idx + " (" + loc + ")");
+    } else {
+        setStatus("保存预设 " + idx + " 失败，请查看提示");
+    }
 }
 
 function loadSlot(idx) {
