@@ -381,56 +381,156 @@ function addAnimProperty(propsGroup, propType) {
     return null;
 }
 
-// ---- 预设存储（使用 AE 内置 app.settings，无需文件写入权限） ----
+// ---- 预设存储（双层：工程目录 JSON + app.settings 全局保底） ----
 var SETTINGS_SECTION = "AE_Lyrics_Anim";
 var SETTINGS_KEY_PREFIX = "preset_";
+var PRESET_FILENAME = "歌词动画预设.json";
 
-// 读取单个预设
-function readPreset(idx) {
+// ===== 工程目录 JSON 文件 =====
+
+// 获取工程目录下的预设 JSON 文件路径
+function getProjectPresetFile() {
     try {
-        if (app.settings.haveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx)) {
-            var text = app.settings.getSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx);
-            if (text && text.length > 0) {
-                return JSON.parse(text);
-            }
-        }
-    } catch (ex) {}
+        var projFile = app.project.file;
+        if (!projFile) return null;
+        var projFolder = projFile.parent;
+        if (!projFolder) return null;
+        var f = new File(projFolder.fsName + "/" + PRESET_FILENAME);
+        return f;
+    } catch (e) { return null; }
+}
+
+// 从工程目录 JSON 读取所有预设
+function readFromProjectFile() {
+    try {
+        var f = getProjectPresetFile();
+        if (!f || !f.exists) return null;
+        f.open("r");
+        var text = f.read();
+        f.close();
+        if (!text || text.length === 0) return null;
+        var parsed = JSON.parse(text);
+        if (parsed && typeof parsed === "object") return parsed;
+    } catch (e) {}
     return null;
 }
 
-// 写入单个预设
-function writePreset(idx, params) {
+// 写入预设到工程目录 JSON（带详细诊断）
+function writeToProjectFile(data) {
+    var diag = ""; // 诊断信息
+
     try {
-        var text = JSON.stringify(params);
-        app.settings.saveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx, text);
-        return true;
+        var f = getProjectPresetFile();
+        if (!f) {
+            alert("JSON 写入失败：工程未保存\n\n请先保存 .aep 工程文件，预设才能跟工程走。\n本次已保存到全局设置（app.settings）。");
+            return false;
+        }
+        diag += "路径: " + f.fsName + "\n";
+
+        // 确保目录存在
+        var dir = f.parent;
+        if (dir) {
+            diag += "目录存在: " + dir.exists + "\n";
+        }
+
+        // 序列化
+        var content = JSON.stringify(data);
+        diag += "内容长度: " + content.length + "\n";
+
+        if (!content || content.length === 0) {
+            alert("JSON 写入失败：内容为空\n" + diag);
+            return false;
+        }
+
+        // 打开文件
+        var opened = f.open("w");
+        diag += "open 结果: " + opened + "\n";
+        if (!opened) {
+            alert("JSON 写入失败：无法打开文件\n" + diag + "\n请检查权限:\n编辑 → 首选项 → 脚本和表达式 → 允许脚本写入文件和访问网络");
+            return false;
+        }
+
+        // 写入
+        var wrote = f.write(content);
+        diag += "write 结果: " + wrote + "\n";
+        f.close();
+
+        if (!wrote) {
+            alert("JSON 写入失败：write 返回 false\n" + diag);
+            return false;
+        }
+
+        // 验证
+        f.open("r");
+        var verify = f.read();
+        f.close();
+        diag += "验证读回长度: " + (verify ? verify.length : 0) + "\n";
+
+        if (verify && verify.length > 0) {
+            return true;
+        } else {
+            alert("JSON 写入失败：验证读回为空\n" + diag);
+            return false;
+        }
     } catch (ex) {
-        alert("保存预设 " + idx + " 失败:\n" + ex.toString());
+        alert("JSON 写入异常:\n" + ex.toString() + "\n" + diag);
         return false;
     }
 }
 
-// 删除单个预设
-function deletePreset(idx) {
+// 删除工程目录 JSON 文件
+function deleteProjectFile() {
+    try {
+        var f = getProjectPresetFile();
+        if (f && f.exists) { f.remove(); }
+    } catch (e) {}
+}
+
+// ===== app.settings 全局保底 =====
+
+function readFromSettings(idx) {
+    try {
+        if (app.settings.haveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx)) {
+            var text = app.settings.getSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx);
+            if (text && text.length > 0) return JSON.parse(text);
+        }
+    } catch (e) {}
+    return null;
+}
+
+function writeToSettings(idx, params) {
+    try {
+        app.settings.saveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx, JSON.stringify(params));
+        return true;
+    } catch (e) { return false; }
+}
+
+function deleteFromSettings(idx) {
     try {
         if (app.settings.haveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx)) {
             app.settings.saveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx, "");
         }
-    } catch (ex) {}
+    } catch (e) {}
 }
 
-// 读取所有预设到缓存
-function readAllPresets() {
+// ===== 统一接口 =====
+
+// 读取所有预设：优先工程目录 JSON，回退 app.settings
+var presetsCache = (function() {
+    // 1. 先读工程目录 JSON
+    var fromFile = readFromProjectFile();
+    if (fromFile) return fromFile;
+
+    // 2. 回退到 app.settings
     var cache = {};
     for (var i = 1; i <= 4; i++) {
-        var p = readPreset(i);
+        var p = readFromSettings(i);
         if (p) cache[String(i)] = p;
     }
     return cache;
-}
+})();
 
-var presetsCache = readAllPresets();
-
+// 保存预设：同时写工程 JSON 和 app.settings
 function saveSlot(idx) {
     var params = {
         d: entryDur.text, b: entryBlur.text, o: entryOffset.text,
@@ -451,12 +551,36 @@ function saveSlot(idx) {
         scnbl: scatterEnable.value
     };
     presetsCache[String(idx)] = params;
-    var ok = writePreset(idx, params);
+
+    // 1. 全局保底（始终执行）
+    var globalOk = writeToSettings(idx, params);
+
+    // 2. 工程目录 JSON（跟工程走）
+    var fileOk = writeToProjectFile(presetsCache);
+
     updateLoadButtons();
-    if (ok) {
-        setStatus("已保存到预设 " + idx);
+    if (fileOk) {
+        setStatus("已保存到预设 " + idx + "（工程目录 JSON）");
+    } else if (globalOk) {
+        setStatus("已保存到预设 " + idx + "（全局设置）");
     } else {
         setStatus("保存预设 " + idx + " 失败");
+    }
+}
+
+function clearAllPresets() {
+    for (var i = 1; i <= 4; i++) { deleteFromSettings(i); }
+    deleteProjectFile();
+    presetsCache = {};
+    updateLoadButtons();
+    setStatus("已清除所有预设");
+}
+
+function updateLoadButtons() {
+    for (var pi = 1; pi <= 4; pi++) {
+        if (loadBtns && loadBtns[pi - 1]) {
+            loadBtns[pi - 1].enabled = (presetsCache && presetsCache[String(pi)]) ? true : false;
+        }
     }
 }
 
@@ -533,23 +657,6 @@ function resetParams() {
     blurMax.text = "25";
     if (scatterEnable) scatterEnable.value = true;
     setStatus("参数已复位");
-}
-
-function clearAllPresets() {
-    for (var i = 1; i <= 4; i++) {
-        deletePreset(i);
-    }
-    presetsCache = {};
-    updateLoadButtons();
-    setStatus("已清除所有预设");
-}
-
-function updateLoadButtons() {
-    for (var pi = 1; pi <= 4; pi++) {
-        if (loadBtns && loadBtns[pi - 1]) {
-            loadBtns[pi - 1].enabled = (presetsCache && presetsCache[String(pi)]) ? true : false;
-        }
-    }
 }
 
 // ---- 辅助函数：安全设置 Blur 值（兼容 2D/1D） ----
