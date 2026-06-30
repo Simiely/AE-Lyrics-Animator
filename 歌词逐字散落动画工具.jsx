@@ -969,7 +969,7 @@ function applyAnimation() {
                     spExpr += "dur = " + pSpacingDur.toFixed(3) + ";\n";
                     spExpr += "s = " + pSpacingStartVal + ";\n";
                     spExpr += "e = " + pSpacingEndVal + ";\n";
-                    spExpr += "v = linear(t, st, st + dur, s, e);\n";
+                    spExpr += "v = linear(t, st, st + dur, s, e) * 0.1;\n";
                     spExpr += is2D ? "[v, v]" : "v";
                     spTrack.expressionEnabled = true;
                     spTrack.expression = spExpr;
