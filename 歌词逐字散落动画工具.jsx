@@ -12,12 +12,12 @@
 // ============================================================
 
 // ---- 构建面板 ----
-var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.4", undefined);
+var pal = (this instanceof Panel) ? this : new Window("palette", "歌词逐字散落动画工具 v3.4", undefined, {resizeable: true});
 pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 4;
 pal.margins = [8, 8, 8, 8];
-// 移除固定 minimumSize/preferredSize，让布局自动计算尺寸，避免初始尺寸错误导致阴影偏移
+pal.minimumSize = [280, 400];
 
 // 标题
 var titleGrp = pal.add("group");
@@ -1055,10 +1055,15 @@ applyBtn.onClick = function() { applyAnimation(); };
 clearBtn.onClick = function() { clearAnimators(); };
 
 // ---- 打开/刷新面板 ----
-// 先 layout 再 show，避免 Windows 阴影偏移
 pal.layout.layout(true);
 if (pal instanceof Window) {
+    // show 之前先设置尺寸为内容的 preferredSize，避免窗口过大导致阴影偏移
+    pal.size = pal.preferredSize;
     pal.center();
     pal.show();
+    // show 之后再校正一次，确保窗口尺寸严格匹配内容
+    pal.layout.layout(true);
+    pal.size = pal.preferredSize;
 }
+pal.onResizing = pal.onResize = function () { this.layout.resize(); };
 try { updateLoadButtons(); } catch (e) {}
