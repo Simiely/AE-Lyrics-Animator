@@ -963,12 +963,14 @@ function applyAnimation() {
 
                 var spTrack = addAnimProperty(spProps, "ADBE Text Tracking Amount");
                 if (spTrack) {
+                    var is2D = (spTrack.propertyValueType === PropertyValueType.TwoD);
                     var spExpr = "t = time - " + startTime.toFixed(3) + ";\n";
                     spExpr += "st = " + pSpacingStartTime.toFixed(3) + ";\n";
                     spExpr += "dur = " + pSpacingDur.toFixed(3) + ";\n";
                     spExpr += "s = " + pSpacingStartVal + ";\n";
                     spExpr += "e = " + pSpacingEndVal + ";\n";
-                    spExpr += "linear(t, st, st + dur, s, e)";
+                    spExpr += "v = linear(t, st, st + dur, s, e);\n";
+                    spExpr += is2D ? "[v, v]" : "v";
                     spTrack.expressionEnabled = true;
                     spTrack.expression = spExpr;
                 }
