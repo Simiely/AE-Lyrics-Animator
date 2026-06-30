@@ -17,7 +17,8 @@ pal.orientation = "column";
 pal.alignChildren = "fill";
 pal.spacing = 4;
 pal.margins = [8, 8, 8, 8];
-pal.minimumSize = [280, 560];
+pal.minimumSize = [280, 400];
+pal.preferredSize = [280, 560];
 
 // 标题
 var titleGrp = pal.add("group");
@@ -391,6 +392,7 @@ function readPresets() {
     try {
         var f = getPresetFilePath();
         if (f && f.exists) {
+            f.encoding = "UTF-8";
             f.open("r");
             var text = f.read();
             f.close();
@@ -414,9 +416,11 @@ function writePresets(data) {
     try {
         var f = getPresetFilePath();
         if (f) {
+            // encoding 必须在 open 之前设置
+            f.encoding = "UTF-8";
+            f.lineFeed = "Unix";
             var ok = f.open("w");
             if (ok) {
-                f.encoding = "UTF-8";
                 f.write(JSON.stringify(data, null, 2));
                 f.close();
                 return;
@@ -1048,9 +1052,9 @@ applyBtn.onClick = function() { applyAnimation(); };
 clearBtn.onClick = function() { clearAnimators(); };
 
 // ---- 打开/刷新面板 ----
-// 先计算布局、自适应大小，再显示窗口，避免 Windows 阴影因初始尺寸错误而偏离
+// 先计算布局、设置窗口尺寸，再显示，避免 Windows 阴影因窗口尺寸错误而偏离
 pal.layout.layout(true);
-try { pal.layout.resize(); } catch (e) {}
+pal.size = pal.preferredSize;
 if (pal instanceof Window) {
     pal.center();
     pal.show();
