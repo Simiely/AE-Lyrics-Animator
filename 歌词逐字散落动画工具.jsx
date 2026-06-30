@@ -39,7 +39,7 @@ entryGrp.text = "  入场参数";
 entryGrp.orientation = "column";
 entryGrp.alignChildren = "fill";
 entryGrp.spacing = 3;
-entryGrp.margins = [5, 12, 5, 5];
+entryGrp.margins = [8, 14, 8, 8];
 
 // 入场总开关
 var gEntryEnable = entryGrp.add("group"); gEntryEnable.orientation = "row"; gEntryEnable.alignChildren = "left";
@@ -78,7 +78,7 @@ exitGrp.text = "  出场参数";
 exitGrp.orientation = "column";
 exitGrp.alignChildren = "fill";
 exitGrp.spacing = 3;
-exitGrp.margins = [5, 12, 5, 5];
+exitGrp.margins = [8, 14, 8, 8];
 
 // 出场总开关
 var gExitEnable = exitGrp.add("group"); gExitEnable.orientation = "row"; gExitEnable.alignChildren = "left";
@@ -112,7 +112,7 @@ heightGrp.text = "  高度错落（波浪浮动）";
 heightGrp.orientation = "column";
 heightGrp.alignChildren = "fill";
 heightGrp.spacing = 3;
-heightGrp.margins = [5, 12, 5, 5];
+heightGrp.margins = [8, 14, 8, 8];
 
 // 高度错落总开关
 var gHeightEnable = heightGrp.add("group"); gHeightEnable.orientation = "row"; gHeightEnable.alignChildren = "left";
@@ -139,7 +139,7 @@ spacingGrp.text = "  字间距动态";
 spacingGrp.orientation = "column";
 spacingGrp.alignChildren = "fill";
 spacingGrp.spacing = 3;
-spacingGrp.margins = [5, 12, 5, 5];
+spacingGrp.margins = [8, 14, 8, 8];
 
 // 字间距总开关
 var gSpacingEnable = spacingGrp.add("group"); gSpacingEnable.orientation = "row"; gSpacingEnable.alignChildren = "left";
@@ -171,7 +171,7 @@ scatterGrp.text = "  散落分布（随机位置 / 大小 / 模糊）";
 scatterGrp.orientation = "column";
 scatterGrp.alignChildren = "fill";
 scatterGrp.spacing = 3;
-scatterGrp.margins = [5, 12, 5, 5];
+scatterGrp.margins = [8, 14, 8, 8];
 
 // 散落分布总开关
 var gScatterEnable = scatterGrp.add("group"); gScatterEnable.orientation = "row"; gScatterEnable.alignChildren = "left";
@@ -227,7 +227,7 @@ presetGrp.text = "  预设管理";
 presetGrp.orientation = "column";
 presetGrp.alignChildren = "fill";
 presetGrp.spacing = 3;
-presetGrp.margins = [5, 12, 5, 4];
+presetGrp.margins = [8, 14, 8, 6];
 
 var saveRow = presetGrp.add("group");
 saveRow.orientation = "row";
@@ -1048,12 +1048,11 @@ applyBtn.onClick = function() { applyAnimation(); };
 clearBtn.onClick = function() { clearAnimators(); };
 
 // ---- 打开/刷新面板 ----
+// 先计算布局、自适应大小，再显示窗口，避免 Windows 阴影因初始尺寸错误而偏离
+pal.layout.layout(true);
+try { pal.layout.resize(); } catch (e) {}
 if (pal instanceof Window) {
     pal.center();
     pal.show();
-}
-pal.layout.layout(true);
-if (pal instanceof Panel) {
-    try { pal.layout.resize(); } catch (e) {}
 }
 try { updateLoadButtons(); } catch (e) {}
