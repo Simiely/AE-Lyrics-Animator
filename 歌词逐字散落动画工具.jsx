@@ -132,6 +132,38 @@ g9.add("statictext", undefined, "流动速度").preferredSize.width = 110;
 var speed = g9.add("edittext", undefined, "1.0"); speed.characters = 5; speed.alignment = ["fill", "center"];
 
 // ======================================================================
+// 字间距动态参数
+// ======================================================================
+var spacingGrp = tabGrp.add("panel");
+spacingGrp.text = "  字间距动态";
+spacingGrp.orientation = "column";
+spacingGrp.alignChildren = "fill";
+spacingGrp.spacing = 3;
+spacingGrp.margins = [8, 14, 8, 8];
+
+// 字间距总开关
+var gSpacingEnable = spacingGrp.add("group"); gSpacingEnable.orientation = "row"; gSpacingEnable.alignChildren = "left";
+var spacingEnable = gSpacingEnable.add("checkbox", undefined, "  启用字间距动画");
+spacingEnable.value = false;
+
+var gSp1 = spacingGrp.add("group"); gSp1.orientation = "row"; gSp1.alignChildren = "fill";
+gSp1.add("statictext", undefined, "初始字间距").preferredSize.width = 110;
+var spacingStart = gSp1.add("edittext", undefined, "0"); spacingStart.characters = 5; spacingStart.alignment = ["fill", "center"];
+
+var gSp2 = spacingGrp.add("group"); gSp2.orientation = "row"; gSp2.alignChildren = "fill";
+gSp2.add("statictext", undefined, "结束字间距").preferredSize.width = 110;
+var spacingEnd = gSp2.add("edittext", undefined, "50"); spacingEnd.characters = 5; spacingEnd.alignment = ["fill", "center"];
+
+var gSp3 = spacingGrp.add("group"); gSp3.orientation = "row"; gSp3.alignChildren = "fill";
+gSp3.add("statictext", undefined, "持续时间 (秒)").preferredSize.width = 110;
+var spacingDur = gSp3.add("edittext", undefined, "2.0"); spacingDur.characters = 5; spacingDur.alignment = ["fill", "center"];
+
+var gSp4 = spacingGrp.add("group"); gSp4.orientation = "row"; gSp4.alignChildren = "fill";
+gSp4.add("statictext", undefined, "开始时间 (秒)").preferredSize.width = 110;
+var spacingStartTime = gSp4.add("edittext", undefined, "0"); spacingStartTime.characters = 5; spacingStartTime.alignment = ["fill", "center"];
+gSp4.add("statictext", undefined, "(绝对时间)").preferredSize.width = 80;
+
+// ======================================================================
 // 散落分布参数
 // ======================================================================
 var scatterGrp = tabGrp.add("panel");
@@ -318,6 +350,7 @@ function addAnimProperty(propsGroup, propType) {
     else if (propType === "ADBE Text Position") candidates = ["ADBE Text Position", "ADBE Text Position 2D", "ADBE Text Position 3D", "Position", "位置"];
     else if (propType === "ADBE Text Opacity") candidates = ["ADBE Text Opacity", "ADBE Text Opacity Percent", "Opacity", "不透明度"];
     else if (propType === "ADBE Text Scale") candidates = ["ADBE Text Scale", "ADBE Text Scale 3D", "Scale", "缩放"];
+    else if (propType === "ADBE Text Tracking Amount") candidates = ["ADBE Text Tracking Amount", "ADBE Text Tracking", "Tracking", "Tracking Amount", "字间距", "跟踪"];
 
     if (propsGroup.addProperty) {
         for (var ai = 0; ai < candidates.length; ai++) {
@@ -383,6 +416,8 @@ function saveSlot(idx) {
         xenbl: exitEnable.value,
         a: heightAmp.text, f: heightFreq.text, sp: speed.text,
         henbl: heightEnable.value,
+        ss1: spacingStart.text, ss2: spacingEnd.text, ss3: spacingDur.text, ss4: spacingStartTime.text,
+        spenbl: spacingEnable.value,
         r: scatterRange.text, sd: seed.text,
         ss: scatterStart.text, st: scatterTrans.text,
         mn: minScale.text, mx: maxScale.text,
@@ -416,6 +451,11 @@ function loadSlot(idx) {
     heightFreq.text = p.f || "0.7";
     speed.text = p.sp || "1.0";
     if (heightEnable) heightEnable.value = (p.henbl !== undefined) ? p.henbl : true;
+    spacingStart.text = p.ss1 || "0";
+    spacingEnd.text = p.ss2 || "50";
+    spacingDur.text = p.ss3 || "2.0";
+    spacingStartTime.text = p.ss4 || "0";
+    if (spacingEnable) spacingEnable.value = (p.spenbl !== undefined) ? p.spenbl : false;
     scatterRange.text = p.r || "150";
     seed.text = p.sd || "1";
     scatterStart.text = p.ss || "2.0";
@@ -446,6 +486,11 @@ function resetParams() {
     heightFreq.text = "0.7";
     speed.text = "1.0";
     if (heightEnable) heightEnable.value = true;
+    spacingStart.text = "0";
+    spacingEnd.text = "50";
+    spacingDur.text = "2.0";
+    spacingStartTime.text = "0";
+    if (spacingEnable) spacingEnable.value = false;
     scatterRange.text = "150";
     seed.text = "1";
     scatterStart.text = "2.0";
@@ -627,6 +672,12 @@ function applyAnimation() {
         var pBlurProb    = Math.max(0, Math.min(100, getVal(blurProb, 40)));
         var pBlurMin     = Math.max(0, getVal(blurMin, 0));
         var pBlurMax     = Math.max(0, getVal(blurMax, 25));
+
+        var pSpacingEnbl  = spacingEnable.value;
+        var pSpacingStartVal = getVal(spacingStart, 0);
+        var pSpacingEndVal   = getVal(spacingEnd, 50);
+        var pSpacingDur      = Math.max(0.1, getVal(spacingDur, 2.0));
+        var pSpacingStartTime = Math.max(0, getVal(spacingStartTime, 0));
 
         // ---- 验证选区 ----
         var comp = app.project.activeItem;
@@ -897,6 +948,34 @@ function applyAnimation() {
         }
 
         // ============================================================
+        // Animator 5: 字间距动态（逐字线性变化）
+        // ============================================================
+        if (pSpacingEnbl) {
+            for (var ci = 1; ci <= textLen; ci++) {
+                var spAnim = animatorsGroup.addProperty("ADBE Text Animator");
+                spAnim.name = "歌词_字间距_" + ci;
+
+                var spProps = findAnimatorProps(spAnim);
+                if (!spProps) continue;
+
+                var spSel = spAnim.property("ADBE Text Selectors").addProperty("ADBE Text Selector");
+                lockCharRange(spSel, ci, textLen);
+
+                var spTrack = addAnimProperty(spProps, "ADBE Text Tracking Amount");
+                if (spTrack) {
+                    var spExpr = "t = time - " + startTime.toFixed(3) + ";\n";
+                    spExpr += "st = " + pSpacingStartTime.toFixed(3) + ";\n";
+                    spExpr += "dur = " + pSpacingDur.toFixed(3) + ";\n";
+                    spExpr += "s = " + pSpacingStartVal + ";\n";
+                    spExpr += "e = " + pSpacingEndVal + ";\n";
+                    spExpr += "linear(t, st, st + dur, s, e)";
+                    spTrack.expressionEnabled = true;
+                    spTrack.expression = spExpr;
+                }
+            }
+        }
+
+        // ============================================================
         // 完成
         // ============================================================
         var dirNames = ["左→右", "右→左", "上→下", "下→上"];
@@ -906,6 +985,7 @@ function applyAnimation() {
         if (pExitEnbl) parts.push("出场" + pExitStart.toFixed(1) + "-" + (pExitStart + pExitDur / pSpeed).toFixed(1) + "s");
         if (pScatterEnbl) parts.push("散落" + textLen + "字符");
         if (pHeightEnbl) parts.push("波浪");
+        if (pSpacingEnbl) parts.push("字间距" + pSpacingStartVal + "→" + pSpacingEndVal);
         var msg = parts.length > 0 ? parts.join(" ") : "无动画（全部关闭）";
         setStatus("完成! " + msg);
         $.writeln("歌词散落动画v3.4已应用成功: " + msg);
