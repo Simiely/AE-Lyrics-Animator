@@ -372,11 +372,33 @@ function addAnimProperty(propsGroup, propType) {
     return null;
 }
 
-// ---- XMP 存储 ----
-var XMP_MARKER = "<!--AE_Lyrics_Presets:";
+// ---- 文件存储（存储在 .aep 同级目录） ----
+var PRESET_FILENAME = "歌词动画预设.json";
+
+function getPresetFilePath() {
+    try {
+        var projFile = app.project.file;
+        if (!projFile) return null;
+        var projFolder = projFile.parent;
+        if (!projFolder) return null;
+        var f = new File(projFolder.fsName + "/" + PRESET_FILENAME);
+        return f;
+    } catch (ex) { return null; }
+}
 
 function readPresets() {
     try {
+        var f = getPresetFilePath();
+        if (f && f.exists) {
+            f.open("r");
+            var text = f.read();
+            f.close();
+            return JSON.parse(text);
+        }
+    } catch (ex) {}
+    // 向后兼容：尝试从 XMP 读取
+    try {
+        var XMP_MARKER = "<!--AE_Lyrics_Presets:";
         var xmp = app.project.xmpPacket;
         if (!xmp) return null;
         var s = xmp.indexOf(XMP_MARKER);
@@ -389,6 +411,17 @@ function readPresets() {
 
 function writePresets(data) {
     try {
+        var f = getPresetFilePath();
+        if (f) {
+            f.open("w");
+            f.write(JSON.stringify(data, null, 2));
+            f.close();
+            return;
+        }
+    } catch (ex) {}
+    // 无工程文件时回退到 XMP
+    try {
+        var XMP_MARKER = "<!--AE_Lyrics_Presets:";
         var tag = XMP_MARKER + JSON.stringify(data) + "-->";
         var xmp = app.project.xmpPacket || "";
         var s = xmp.indexOf(XMP_MARKER);
@@ -400,7 +433,7 @@ function writePresets(data) {
             xmp = pe >= 0 ? xmp.substring(0, pe) + tag + "\n" + xmp.substring(pe) : xmp + "\n" + tag;
         }
         app.project.xmpPacket = xmp;
-    } catch (ex) { /* XMP写入非关键 */ }
+    } catch (ex) {}
 }
 
 var presetsCache = readPresets() || {};
