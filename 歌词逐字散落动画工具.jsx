@@ -381,114 +381,55 @@ function addAnimProperty(propsGroup, propType) {
     return null;
 }
 
-// ---- 文件存储（存储在脚本所在目录） ----
-var PRESET_FILENAME = "歌词动画预设.json";
-var XMP_MARKER = "<!--AE_Lyrics_Presets:";
+// ---- 预设存储（使用 AE 内置 app.settings，无需文件写入权限） ----
+var SETTINGS_SECTION = "AE_Lyrics_Anim";
+var SETTINGS_KEY_PREFIX = "preset_";
 
-// 获取脚本自身所在目录的预设文件路径
-function getPresetFilePath() {
+// 读取单个预设
+function readPreset(idx) {
     try {
-        var scriptFile = new File($.fileName);
-        if (scriptFile.exists) {
-            return new File(scriptFile.parent.fsName + "/" + PRESET_FILENAME);
-        }
-    } catch (ex) {}
-    try {
-        return new File(Folder.desktop.fsName + "/" + PRESET_FILENAME);
-    } catch (e) { return null; }
-}
-
-// 读取预设：优先 JSON 文件，回退 XMP
-function readPresets() {
-    // 1. 尝试从 JSON 文件读取
-    try {
-        var f = getPresetFilePath();
-        if (f && f.exists) {
-            f.open("r");
-            var text = f.read();
-            f.close();
+        if (app.settings.haveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx)) {
+            var text = app.settings.getSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx);
             if (text && text.length > 0) {
-                var parsed = JSON.parse(text);
-                if (parsed && typeof parsed === "object") return parsed;
+                return JSON.parse(text);
             }
         }
     } catch (ex) {}
-
-    // 2. 回退：从 XMP 读取（兼容旧版本保存的预设）
-    try {
-        var xmp = app.project.xmpPacket;
-        if (xmp) {
-            var s = xmp.indexOf(XMP_MARKER);
-            if (s >= 0) {
-                var d = s + XMP_MARKER.length;
-                var e = xmp.indexOf("-->", d);
-                if (e > d) {
-                    return JSON.parse(xmp.substring(d, e));
-                }
-            }
-        }
-    } catch (ex) {}
-
-    return {};
+    return null;
 }
 
-// 写入预设：优先 JSON 文件，失败回退 XMP
-function writePresets(data) {
-    // 1. 尝试写入 JSON 文件
+// 写入单个预设
+function writePreset(idx, params) {
     try {
-        var f = getPresetFilePath();
-        if (f) {
-            var dir = f.parent;
-            if (dir && !dir.exists) { dir.create(); }
-
-            // 删除旧文件
-            if (f.exists) { f.remove(); }
-
-            // 写入
-            var opened = f.open("w");
-            if (opened) {
-                // 使用不带缩进的 stringify，避免 ExtendScript 兼容问题
-                var content = JSON.stringify(data);
-                var wrote = f.write(content);
-                f.close();
-
-                if (wrote && content && content.length > 0) {
-                    // 验证：读回检查
-                    f.open("r");
-                    var verify = f.read();
-                    f.close();
-                    if (verify && verify.length > 0) {
-                        return true;
-                    }
-                }
-            }
-        }
-    } catch (ex) {
-        $.writeln("JSON 文件写入异常: " + ex.toString());
-    }
-
-    // 2. 回退：写入 XMP
-    try {
-        var content = JSON.stringify(data);
-        var tag = XMP_MARKER + content + "-->";
-        var xmp = app.project.xmpPacket || "";
-        var s = xmp.indexOf(XMP_MARKER);
-        if (s >= 0) {
-            var e = xmp.indexOf("-->", s);
-            xmp = xmp.substring(0, s) + tag + (e >= 0 ? xmp.substring(e + 3) : "");
-        } else {
-            var pe = xmp.indexOf('<?xpacket end');
-            xmp = pe >= 0 ? xmp.substring(0, pe) + tag + "\n" + xmp.substring(pe) : xmp + "\n" + tag;
-        }
-        app.project.xmpPacket = xmp;
+        var text = JSON.stringify(params);
+        app.settings.saveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx, text);
         return true;
     } catch (ex) {
-        alert("预设保存完全失败:\n" + ex.toString() + "\n\n请检查 AE 偏好设置:\n编辑 → 首选项 → 脚本和表达式 → 允许脚本写入文件和访问网络");
+        alert("保存预设 " + idx + " 失败:\n" + ex.toString());
         return false;
     }
 }
 
-var presetsCache = readPresets();
+// 删除单个预设
+function deletePreset(idx) {
+    try {
+        if (app.settings.haveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx)) {
+            app.settings.saveSetting(SETTINGS_SECTION, SETTINGS_KEY_PREFIX + idx, "");
+        }
+    } catch (ex) {}
+}
+
+// 读取所有预设到缓存
+function readAllPresets() {
+    var cache = {};
+    for (var i = 1; i <= 4; i++) {
+        var p = readPreset(i);
+        if (p) cache[String(i)] = p;
+    }
+    return cache;
+}
+
+var presetsCache = readAllPresets();
 
 function saveSlot(idx) {
     var params = {
@@ -510,14 +451,12 @@ function saveSlot(idx) {
         scnbl: scatterEnable.value
     };
     presetsCache[String(idx)] = params;
-    var ok = writePresets(presetsCache);
+    var ok = writePreset(idx, params);
     updateLoadButtons();
-    var f = getPresetFilePath();
-    var loc = f ? f.fsName : "未知路径";
     if (ok) {
-        setStatus("已保存到预设 " + idx + " (" + loc + ")");
+        setStatus("已保存到预设 " + idx);
     } else {
-        setStatus("保存预设 " + idx + " 失败，请查看提示");
+        setStatus("保存预设 " + idx + " 失败");
     }
 }
 
@@ -597,8 +536,10 @@ function resetParams() {
 }
 
 function clearAllPresets() {
+    for (var i = 1; i <= 4; i++) {
+        deletePreset(i);
+    }
     presetsCache = {};
-    writePresets(presetsCache);
     updateLoadButtons();
     setStatus("已清除所有预设");
 }
