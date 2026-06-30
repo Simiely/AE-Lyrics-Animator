@@ -421,32 +421,37 @@ function readPresets() {
 }
 
 function writePresets(data) {
+    var content = JSON.stringify(data, null, 2);
+    var fileWritten = false;
+
+    // 尝试写入 JSON 文件
     try {
         var f = getPresetFilePath();
         if (f) {
-            // 确保父文件夹存在
             var parentFolder = f.parent;
-            if (!parentFolder.exists) {
+            if (parentFolder && !parentFolder.exists) {
                 parentFolder.create();
             }
-            // 按 Adobe 社区推荐: encoding 在 open 之前设置
-            f.encoding = "UTF-8";
-            f.lineFeed = "Unix";
-            f.open("w");
-            f.write(JSON.stringify(data, null, 2));
-            f.close();
-            $.writeln("预设已写入: " + f.fsName);
-            return;
-        } else {
-            $.writeln("getPresetFilePath 返回 null (工程未保存?)");
+            var opened = f.open("w");
+            if (opened) {
+                var wrote = f.write(content);
+                f.close();
+                if (wrote && content.length > 0) {
+                    fileWritten = true;
+                }
+            }
         }
     } catch (ex) {
         $.writeln("写入预设文件异常: " + ex.toString());
     }
-    // 无工程文件时回退到 XMP
+
+    // 文件写入成功，直接返回
+    if (fileWritten) return;
+
+    // 文件写入失败 → 回退到 XMP
     try {
         var XMP_MARKER = "<!--AE_Lyrics_Presets:";
-        var tag = XMP_MARKER + JSON.stringify(data) + "-->";
+        var tag = XMP_MARKER + content + "-->";
         var xmp = app.project.xmpPacket || "";
         var s = xmp.indexOf(XMP_MARKER);
         if (s >= 0) {
@@ -457,7 +462,11 @@ function writePresets(data) {
             xmp = pe >= 0 ? xmp.substring(0, pe) + tag + "\n" + xmp.substring(pe) : xmp + "\n" + tag;
         }
         app.project.xmpPacket = xmp;
-    } catch (ex) {}
+        // 提示用户文件写入失败
+        alert("预设已保存到工程文件 XMP（JSON 文件写入失败）。\n\n请在 AE 偏好设置中开启：\n编辑 → 首选项 → 脚本和表达式 → 允许脚本写入文件和访问网络\n\n开启后重启 AE，即可使用 JSON 文件存储。");
+    } catch (ex) {
+        alert("预设保存失败: " + ex.toString());
+    }
 }
 
 var presetsCache = readPresets() || {};
